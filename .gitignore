@@ -1,0 +1,6 @@
+# Bobot foundation model (>100 MB, melebihi batas GitHub); notebook mengunduh ulang otomatis lewat local_model()
+models/chronos-2/
+models/chronos-bolt-small/
+models/timesfm-2.0-500m-pytorch/
+__pycache__/
+.ipynb_checkpoints/

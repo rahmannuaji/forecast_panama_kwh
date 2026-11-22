@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peramalan Beban Listrik Panama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: kolom tunggal 1240px, ringkasan di atas lalu panel grid 12 kolom per bab; radius panel 10px, kontrol pill 999px */
+:root {
+  --bg: #f4f6f8; --surface: #fcfcfb; --ink: #14171b; --ink-2: #4c535c; --line: #e1e4e8; --accent: #2a78d6;
+  --accent-soft: #e6effb; --good: #0b7a0b; --good-soft: #e3f3e3; --neutral-soft: #eef0f2;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111315; --surface: #1a1c1f; --ink: #eef0f2; --ink-2: #a8b0b9; --line: #2c3036; --accent: #3987e5;
+    --accent-soft: #1b2b40; --good: #4cc24c; --good-soft: #17301a; --neutral-soft: #24272b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111315; --surface: #1a1c1f; --ink: #eef0f2; --ink-2: #a8b0b9; --line: #2c3036; --accent: #3987e5;
+  --accent-soft: #1b2b40; --good: #4cc24c; --good-soft: #17301a; --neutral-soft: #24272b; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+header.top { border-bottom: 1px solid var(--line); background: var(--surface); }
+header.top .wrap { display: flex; gap: 24px; align-items: center; justify-content: space-between; padding-top: 22px; padding-bottom: 18px; flex-wrap: wrap; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 6px; letter-spacing: -0.005em; text-wrap: balance; }
+h3 { font-size: 14.5px; margin: 0 0 10px; font-weight: 600; }
+p { margin: 0 0 10px; max-width: 72ch; }
+.sub { color: var(--ink-2); margin: 0; }
+nav.sec { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+nav.sec .wrap { display: flex; gap: 4px; overflow-x: auto; padding-top: 8px; padding-bottom: 8px; }
+nav.sec a { color: var(--ink-2); text-decoration: none; padding: 6px 12px; border-radius: 999px; white-space: nowrap; font-size: 14px; }
+nav.sec a:hover { background: var(--neutral-soft); color: var(--ink); }
+section { padding: 34px 0 6px; scroll-margin-top: 56px; }
+.lead { color: var(--ink-2); margin-bottom: 18px; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.s12 { grid-column: span 12; } .s8 { grid-column: span 8; } .s7 { grid-column: span 7; } .s6 { grid-column: span 6; } .s5 { grid-column: span 5; } .s4 { grid-column: span 4; } .s3 { grid-column: span 3; }
+@media (max-width: 900px) { .s8, .s7, .s6, .s5, .s4 { grid-column: span 12; } .s3 { grid-column: span 6; } }
+@media (max-width: 520px) { .s3 { grid-column: span 12; } h1 { font-size: 22px; } }
+.kpi .v { font: 600 30px/1.1 var(--font-mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.kpi .l { color: var(--ink-2); font-size: 13.5px; margin-top: 6px; }
+.kpi .t { font-size: 13px; color: var(--ink-2); margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.chart { position: relative; height: 300px; }
+.chart.tall { height: 360px; } .chart.short { height: 250px; }
+.note { font-size: 13.5px; color: var(--ink-2); margin-top: 10px; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 7px 10px; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--ink-2); font-weight: 500; border-bottom: 1px solid var(--line); }
+tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+td.num { font-family: var(--font-mono); font-size: 13px; }
+tr.best td { background: var(--accent-soft); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; background: var(--neutral-soft); color: var(--ink-2); white-space: nowrap; }
+.chip.on { background: var(--good-soft); color: var(--good); }
+.chip.acc { background: var(--accent-soft); color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; background: var(--bg); }
+.seg button, .btn { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink-2); padding: 5px 14px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 14%, transparent); }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.btn:hover, .seg button:hover { color: var(--ink); }
+.btn:active { transform: translateY(1px); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-bottom: 14px; }
+.controls label { font-size: 13.5px; color: var(--ink-2); }
+input[type="range"] { width: min(420px, 100%); accent-color: var(--accent); }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.toggles label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px 3px 9px; cursor: pointer; color: var(--ink); background: var(--surface); }
+.toggles input { accent-color: var(--accent); margin: 0; }
+.mono { font-family: var(--font-mono); }
+.heat { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 2px; font-size: 11.5px; }
+.heat div { height: 11px; border-radius: 2px; }
+.heat .lab { height: auto; color: var(--ink-2); text-align: right; padding-right: 6px; line-height: 11px; font-family: var(--font-mono); font-size: 10.5px; }
+.heat .colh { height: auto; text-align: center; color: var(--ink-2); padding-bottom: 4px; }
+.legend-ramp { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-top: 10px; }
+.legend-ramp span.bar { flex: 0 0 140px; height: 8px; border-radius: 4px; }
+.fm-status { white-space: normal; }
+td.wrap-cell { white-space: normal; text-align: left; min-width: 220px; }
+footer { color: var(--ink-2); font-size: 13px; padding: 30px 0 50px; }
+footer a, .ref a { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div>
+      <h1>Peramalan Beban Listrik Panama</h1>
+      <p class="sub" id="subtitle">Perbandingan foundation model deret waktu dengan model statistik dan machine learning, horizon 24 jam.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Tema tampilan">
+      <button type="button" data-theme-set="light" aria-pressed="false">Terang</button>
+      <button type="button" data-theme-set="auto" aria-pressed="true">Sistem</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Gelap</button>
+    </div>
+  </div>
+</header>
+<nav class="sec" aria-label="Bagian">
+  <div class="wrap">
+    <a href="#ringkasan">Ringkasan</a><a href="#data">Data</a><a href="#model">Model</a><a href="#evaluasi">Evaluasi</a><a href="#backtest">Backtest</a><a href="#uji">Uji DM</a><a href="#ke-depan">24 jam ke depan</a><a href="#metodologi">Metodologi</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section id="ringkasan">
+    <h2>Ringkasan temuan</h2>
+    <p class="lead" id="lead-ringkasan"></p>
+    <div class="grid" id="kpis"></div>
+  </section>
+
+  <section id="data">
+    <h2>Karakteristik data</h2>
+    <p class="lead" id="lead-data"></p>
+    <div class="grid">
+      <div class="panel s12">
+        <h3>Rata-rata beban harian, 2015 s.d. 2020 (MWh)</h3>
+        <div class="chart"><canvas id="c-daily" aria-label="Grafik rata-rata beban harian"></canvas></div>
+        <p class="note">Garis vertikal menandai 15 Maret 2020, awal regime COVID-19 dalam evaluasi. Area abu-abu adalah periode uji backtest.</p>
+      </div>
+      <div class="panel s5">
+        <h3>Rata-rata beban per jam dan hari, 2019</h3>
+        <div id="heat" class="heat" role="img" aria-label="Peta panas beban per jam dan hari"></div>
+        <div class="legend-ramp"><span id="heat-min" class="mono"></span><span class="bar" id="heat-bar"></span><span id="heat-max" class="mono"></span><span>MWh</span></div>
+      </div>
+      <div class="panel s7">
+        <h3>Profil harian: hari biasa vs hari libur nasional</h3>
+        <div class="chart short"><canvas id="c-holiday"></canvas></div>
+        <p class="note" id="note-holiday"></p>
+      </div>
+      <div class="panel s4">
+        <h3>Kekuatan komponen MSTL (2019)</h3>
+        <div class="tbl-wrap"><table id="t-strength"></table></div>
+        <p class="note">Indeks 0 sampai 1: 1 - Var(residu) / Var(komponen + residu). Nilai mendekati 1 berarti komponen sangat dominan.</p>
+      </div>
+      <div class="panel s4">
+        <h3>Korelasi beban dengan cuaca</h3>
+        <div class="tbl-wrap"><table id="t-corr"></table></div>
+      </div>
+      <div class="panel s4">
+        <h3>Ringkasan tahunan</h3>
+        <div class="tbl-wrap"><table id="t-year"></table></div>
+        <p class="note">Tahun 2020 hanya sampai 27 Juni dan memuat periode pembatasan COVID-19.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="model">
+    <h2>Model yang dibandingkan</h2>
+    <p class="lead">Delapan model dari tiga paradigma. Foundation model dipakai tanpa pelatihan pada data Panama (zero-shot). Moirai, Lag-Llama, dan TimeGPT dibahas secara konseptual karena kendala teknis.</p>
+    <div class="panel">
+      <div class="tbl-wrap"><table id="t-models"></table></div>
+    </div>
+  </section>
+
+  <section id="evaluasi">
+    <h2>Evaluasi akurasi</h2>
+    <p class="lead" id="lead-eval"></p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Pilih regime" id="seg-regime">
+        <button type="button" data-reg="Semua" aria-pressed="true">Semua origin</button>
+        <button type="button" data-reg="Normal" aria-pressed="false">Normal</button>
+        <button type="button" data-reg="COVID-19" aria-pressed="false">COVID-19</button>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="panel s12">
+        <h3 id="h-leader">Papan peringkat</h3>
+        <div class="tbl-wrap"><table id="t-leader"></table></div>
+        <p class="note">MASE &lt; 1 berarti lebih akurat daripada seasonal naive mingguan di data latih. WQL mengukur akurasi seluruh distribusi ramalan (makin kecil makin baik). Cakupan 80% idealnya mendekati 80. Skill = penurunan MAE relatif terhadap SNaive-168.</p>
+      </div>
+      <div class="panel s5">
+        <h3>MAPE per model (%)</h3>
+        <div class="chart"><canvas id="c-mape"></canvas></div>
+      </div>
+      <div class="panel s7">
+        <h3>MAE menurut horizon (MWh)</h3>
+        <div class="chart"><canvas id="c-horizon"></canvas></div>
+        <p class="note">Klik nama model pada legenda untuk menyembunyikan atau menampilkan garis.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="backtest">
+    <h2>Penjelajah backtest</h2>
+    <p class="lead">Pilih hari origin untuk melihat ramalan 24 jam setiap model terhadap nilai aktual.</p>
+    <div class="panel">
+      <div class="controls">
+        <button class="btn" type="button" id="prev" aria-label="Hari sebelumnya">Sebelumnya</button>
+        <label for="origin">Origin <span class="mono" id="origin-label"></span> <span class="chip" id="origin-reg"></span></label>
+        <input type="range" id="origin" min="0" value="0" step="1">
+        <button class="btn" type="button" id="next" aria-label="Hari berikutnya">Berikutnya</button>
+      </div>
+      <div class="controls">
+        <div class="toggles" id="model-toggles" role="group" aria-label="Model yang ditampilkan"></div>
+        <label for="band-model">Interval 80% untuk</label>
+        <select id="band-model" class="btn"></select>
+      </div>
+      <div class="grid">
+        <div class="s8"><div class="chart tall"><canvas id="c-bt"></canvas></div></div>
+        <div class="s4"><h3>MAE pada hari ini (MWh)</h3><div class="tbl-wrap"><table id="t-day"></table></div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>MAE harian sepanjang periode uji (MWh)</h3>
+      <div class="chart"><canvas id="c-daily-err"></canvas></div>
+      <p class="note">Setiap titik adalah rata-rata galat absolut 24 jam untuk satu origin. Model yang dicentang di atas ikut tampil di sini.</p>
+    </div>
+  </section>
+
+  <section id="uji">
+    <h2>Uji Diebold-Mariano</h2>
+    <p class="lead" id="lead-dm"></p>
+    <div class="panel">
+      <div class="tbl-wrap"><table id="t-dm"></table></div>
+      <p class="note">H0: akurasi kedua model sama. Kerugian = rata-rata galat absolut harian; varians HAC Newey-West lag 5; DM &lt; 0 berarti model A lebih akurat.</p>
+    </div>
+  </section>
+
+  <section id="ke-depan">
+    <h2>Ramalan 24 jam setelah akhir data</h2>
+    <p class="lead">Chronos-2 univariat yang dimuat dari folder lokal meramal 27 Juni 2020 pukul 01.00 sampai 28 Juni 2020 pukul 00.00. Nilai cuaca masa depan tidak tersedia, sehingga varian berkovariat tidak dipakai di sini.</p>
+    <div class="panel">
+      <div class="chart"><canvas id="c-future"></canvas></div>
+    </div>
+  </section>
+
+  <section id="metodologi">
+    <h2>Metodologi dan keterbatasan</h2>
+    <div class="grid">
+      <div class="panel s6">
+        <h3>Desain evaluasi</h3>
+        <p id="meth-design"></p>
+        <p>Ukuran akurasi: MAE, RMSE, MAPE, MASE (skala seasonal naive 168 jam pada data latih), WQL rata-rata kuantil 0,1 sampai 0,9, dan cakupan interval 80%.</p>
+      </div>
+      <div class="panel s6">
+        <h3>Keterbatasan</h3>
+        <p>Kovariat cuaca memakai nilai observasi, bukan ramalan cuaca, sehingga akurasi model berkovariat adalah batas atas. Foundation model tidak di-fine-tune. Hiperparameter XGBoost dan orde ARIMA tidak dicari secara grid. Evaluasi mencakup satu semester (Januari s.d. Juni 2020).</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap ref">
+  Data: Aguilar Madrid, E., &amp; Antonio, N. (2021). Short-term electricity load forecasting with machine learning. <em>Information, 12</em>(2), 50. <a href="https://doi.org/10.3390/info12020050">doi.org/10.3390/info12020050</a>. Analisis lengkap ada di notebook dan LAPORAN_ANALISIS.md.
+</footer>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const D = window.DATA, M = D.meta.models;
+const DARK_SERIES = {'Chronos-2+Kov': '#3987e5', 'Chronos-2': '#d95926', 'Chronos-Bolt': '#199e70', 'TimesFM-2.0': '#c98500', 'XGBoost': '#d55181', 'SARIMAX-W': '#0ca30c', 'SARIMAX-DHR': '#9085e9', 'SNaive-168': '#8f8e88'};
+const root = document.documentElement;
+const isDark = () => root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+const col = m => (isDark() ? DARK_SERIES : D.meta.colors)[m];
+const tok = v => getComputedStyle(root).getPropertyValue(v).trim();
+const fmt = (x, d = 2) => x == null || Number.isNaN(x) ? '-' : Number(x).toLocaleString('id-ID', {minimumFractionDigits: d, maximumFractionDigits: d});
+const rows = s => s.data.map((r, i) => Object.fromEntries([['_i', s.index[i]], ...s.columns.map((c, j) => [c, r[j]])]));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const alpha = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
+const charts = {};
+
+const overall = rows(D.overall), byReg = rows(D.by_regime), dm = rows(D.dm), info = rows(D.info);
+const best = D.meta.best;
+const metricRow = (m, reg) => reg === 'Semua' ? overall.find(r => r._i === m) : byReg.find(r => r.model === m && r.regime === reg);
+
+/* Ringkasan: angka dihitung langsung dari hasil notebook */
+function renderSummary() {
+  const b = metricRow(best, 'Semua'), bn = metricRow(best, 'Normal'), bc = metricRow(best, 'COVID-19');
+  const sn = metricRow('SNaive-168', 'Semua');
+  const fmBest = overall.filter(r => ['Chronos-2', 'Chronos-Bolt', 'TimesFM-2.0'].includes(r._i)).sort((a, c) => a.MAE - c.MAE)[0];
+  const stat = overall.filter(r => ['XGBoost', 'SARIMAX-W', 'SARIMAX-DHR'].includes(r._i)).sort((a, c) => a.MAE - c.MAE)[0];
+  const sig = dm.filter(r => r['Model A'] === best && r.Regime === 'Semua');
+  const nSig = sig.filter(r => r['p-value'] < 0.05 && r.DM < 0).length;
+  document.getElementById('subtitle').textContent = `${D.meta.n_obs.toLocaleString('id-ID')} observasi per jam (${D.meta.start.slice(0, 10)} s.d. ${D.meta.end.slice(0, 10)}), ${D.meta.n_origin} origin backtest harian, horizon ${D.meta.H} jam.`;
+  document.getElementById('lead-ringkasan').textContent = `Model terbaik menurut MAE keseluruhan adalah ${best}. Angka di bawah dihitung dari ${D.meta.n_origin * D.meta.H} pasangan ramalan dan aktual per model.`;
+  const tiles = [
+    [fmt(b['MAPE (%)']) + '%', `MAPE ${best}`, `MAE ${fmt(b.MAE, 1)} MWh, MASE ${fmt(b.MASE, 3)}`],
+    [fmt(b['Skill vs SNaive (%)'], 1) + '%', 'Penurunan MAE terhadap seasonal naive', `SNaive-168: MAPE ${fmt(sn['MAPE (%)'])}%`],
+    [fmt(fmBest['MAPE (%)']) + '%', `MAPE foundation model univariat terbaik (${fmBest._i})`, `Pembanding domain terbaik: ${stat._i}, MAPE ${fmt(stat['MAPE (%)'])}%`],
+    [`${fmt(bn['MAPE (%)'])}% → ${fmt(bc['MAPE (%)'])}%`, `MAPE ${best}: Normal vs COVID-19`, `${nSig} dari ${sig.length} pembanding kalah signifikan (uji DM, alpha 5%)`]
+  ];
+  document.getElementById('kpis').innerHTML = tiles.map(([v, l, t]) => `<div class="panel kpi s3"><div class="v">${v}</div><div class="l">${l}</div><div class="t">${t}</div></div>`).join('');
+}
+
+function baseOpts(extra = {}) {
+  const ink2 = tok('--ink-2'), line = tok('--line');
+  return Object.assign({
+    responsive: true, maintainAspectRatio: false, animation: reduce ? false : {duration: 300},
+    interaction: {mode: 'index', intersect: false},
+    plugins: {legend: {labels: {color: ink2, boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: {family: 'IBM Plex Sans', size: 12}}},
+              tooltip: {backgroundColor: tok('--surface'), titleColor: tok('--ink'), bodyColor: tok('--ink'), borderColor: line, borderWidth: 1, padding: 10, boxPadding: 4,
+                        titleFont: {family: 'IBM Plex Sans', weight: '600'}, bodyFont: {family: 'IBM Plex Mono', size: 12},
+                        callbacks: {label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y ?? c.parsed.x, 1)}`}}},
+    scales: {x: {grid: {display: false}, border: {color: line}, ticks: {color: ink2, maxRotation: 0, autoSkipPadding: 18, font: {family: 'IBM Plex Sans', size: 11.5}}},
+             y: {grid: {color: line, lineWidth: 0.7}, border: {display: false}, ticks: {color: ink2, font: {family: 'IBM Plex Mono', size: 11}}}}
+  }, extra);
+}
+const vline = (getIdx, getX) => ({id: 'vline', afterDatasetsDraw(ch) {
+  const i = getIdx(ch); if (i == null || i < 0) return;
+  const x = ch.scales.x.getPixelForValue(i), {top, bottom} = ch.chartArea, c = ch.ctx;
+  c.save(); c.strokeStyle = tok('--ink'); c.lineWidth = 1; c.beginPath(); c.moveTo(x, top); c.lineTo(x, bottom); c.stroke(); c.restore();
+}});
+const shade = getIdx => ({id: 'shade', beforeDatasetsDraw(ch) {
+  const i = getIdx(ch); if (i < 0) return;
+  const x = ch.scales.x.getPixelForValue(i), {top, bottom, right} = ch.chartArea, c = ch.ctx;
+  c.save(); c.fillStyle = tok('--neutral-soft'); c.fillRect(x, top, right - x, bottom - top); c.restore();
+}});
+function make(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart(document.getElementById(id), cfg); return charts[id]; }
+
+function renderData() {
+  const dts = D.daily.dates;
+  const covI = dts.indexOf(D.meta.covid_start), testI = dts.indexOf('2020-01-01');
+  make('c-daily', {type: 'line', data: {labels: dts, datasets: [{label: 'Beban harian', data: D.daily.values, borderColor: tok('--accent'), borderWidth: 1.2, pointRadius: 0, pointHitRadius: 6}]},
+    options: baseOpts({plugins: {...baseOpts().plugins, legend: {display: false}}, scales: {...baseOpts().scales, x: {...baseOpts().scales.x, ticks: {...baseOpts().scales.x.ticks, maxTicksLimit: 8}}}}),
+    plugins: [shade(() => testI), vline(() => covI)]});
+  const hp = D.holiday_profile;
+  make('c-holiday', {type: 'line', data: {labels: hp.hour.map(h => String(h).padStart(2, '0')), datasets: [
+      {label: 'Hari biasa', data: hp.biasa, borderColor: col('Chronos-2+Kov'), borderWidth: 2, pointRadius: 0},
+      {label: 'Hari libur nasional', data: hp.libur, borderColor: col('Chronos-2'), borderWidth: 2, pointRadius: 0}]},
+    options: baseOpts({scales: {...baseOpts().scales, x: {...baseOpts().scales.x, title: {display: true, text: 'Jam', color: tok('--ink-2')}}}})});
+  const gap = hp.biasa.map((v, i) => v - hp.libur[i]), mx = Math.max(...gap), hmx = gap.indexOf(mx);
+  document.getElementById('note-holiday').textContent = `Selisih terbesar ${fmt(mx, 0)} MWh pada jam ${String(hp.hour[hmx]).padStart(2, '0')}. Pada dini hari kedua profil hampir berimpit, sehingga efek libur terkonsentrasi pada jam kerja.`;
+
+  const z = D.profile.z, flat = z.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
+  const ramp = isDark() ? ['#1b2b40', '#3987e5', '#cde2fb'] : ['#eaf2fd', '#5598e7', '#0d366b'];
+  const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const colorAt = v => { const t = (v - lo) / (hi - lo); const [a, b, u] = t < 0.5 ? [ramp[0], ramp[1], t * 2] : [ramp[1], ramp[2], (t - 0.5) * 2]; return `rgb(${lerp(hex2(a), hex2(b), u).join(',')})`; };
+  let h = '<div class="colh"></div>' + D.profile.cols.map(c => `<div class="colh">${c}</div>`).join('');
+  z.forEach((r, i) => { h += `<div class="lab">${String(D.profile.rows[i]).padStart(2, '0')}</div>` + r.map((v, j) => `<div style="background:${colorAt(v)}" title="${D.profile.cols[j]} jam ${D.profile.rows[i]}: ${fmt(v, 0)} MWh"></div>`).join(''); });
+  document.getElementById('heat').innerHTML = h;
+  document.getElementById('heat-bar').style.background = `linear-gradient(90deg, ${ramp.join(',')})`;
+  document.getElementById('heat-min').textContent = fmt(lo, 0); document.getElementById('heat-max').textContent = fmt(hi, 0);
+
+  const sName = {Tren: 'Tren', seasonal_24: 'Musiman harian (24 jam)', seasonal_168: 'Musiman mingguan (168 jam)'};
+  document.getElementById('t-strength').innerHTML = '<thead><tr><th>Komponen</th><th>Kekuatan</th></tr></thead><tbody>' + Object.entries(D.strength).map(([k, v]) => `<tr><td>${sName[k] || k}</td><td class="num">${fmt(v, 3)}</td></tr>`).join('') + '</tbody>';
+  const cr = rows(D.corr).sort((a, b) => Math.abs(b.r_per_jam) - Math.abs(a.r_per_jam)).slice(0, 7);
+  document.getElementById('t-corr').innerHTML = '<thead><tr><th>Variabel</th><th>r per jam</th><th>r harian</th></tr></thead><tbody>' + cr.map(r => `<tr><td class="mono">${r._i}</td><td class="num">${fmt(r.r_per_jam, 3)}</td><td class="num">${fmt(r.r_harian, 3)}</td></tr>`).join('') + '</tbody>';
+  const yr = rows(D.yearly);
+  document.getElementById('t-year').innerHTML = '<thead><tr><th>Tahun</th><th>Rerata</th><th>Simp. baku</th><th>Tumbuh %</th></tr></thead><tbody>' + yr.map(r => `<tr><td>${r._i}</td><td class="num">${fmt(r.mean, 1)}</td><td class="num">${fmt(r.std, 1)}</td><td class="num">${r['tumbuh_%'] == null ? '-' : fmt(r['tumbuh_%'], 2)}</td></tr>`).join('') + '</tbody>';
+}
+
+function renderModels() {
+  const FM = [
+    ['Chronos-2+Kov', 'Foundation model', 'Chronos-2 dengan kovariat suhu tiga kota, kelembapan, hari libur, dan masa sekolah (masa lalu dan masa depan) melalui group attention.', true],
+    ['Chronos-2', 'Foundation model', 'Amazon, 2025. In-context learning lintas target dan kovariat; di sini dipakai univariat.', true],
+    ['Chronos-Bolt', 'Foundation model', 'Amazon. Varian Chronos berbasis patch yang langsung menghasilkan kuantil multi-langkah.', true],
+    ['TimesFM-2.0', 'Foundation model', 'Google. Decoder-only dengan masukan patch, dilatih pada korpus nyata dan sintetis.', true],
+    ['XGBoost', 'Machine learning', 'Gradient boosting dengan fitur kalender, cuaca, dan lag 24 s.d. 336 jam; dilatih sampai Desember 2019.', true],
+    ['SARIMAX-W', 'Statistik', 'Beda musiman mingguan y(t) - y(t-168) dengan galat ARIMA(2,0,1)(1,0,0)24 dan eksogen yang ikut dibedakan; MLE pada 2019.', true],
+    ['SARIMAX-DHR', 'Statistik', 'Regresi harmonik dinamis: Fourier 24 dan 168 jam, suhu, kalender, galat ARIMA(2,1,1); MLE pada 2019.', true],
+    ['SNaive-168', 'Baseline', 'Menyalin nilai pada jam yang sama minggu sebelumnya.', true],
+    ['Moirai', 'Foundation model', 'Salesforce, 2024. Masked-encoder universal, korpus LOTSA. Pustaka uni2ts mensyaratkan torch < 2.5 sehingga bentrok dengan lingkungan.', false],
+    ['Lag-Llama', 'Foundation model', 'Decoder-only bergaya LLaMA dengan lag sebagai kovariat. Bergantung pada GluonTS versi lama.', false],
+    ['TimeGPT', 'Foundation model', 'Nixtla. Sumber tertutup, diakses melalui API berbayar; data harus dikirim ke layanan eksternal.', false]];
+  const par = Object.fromEntries(info.map(r => [r._i, r]));
+  document.getElementById('t-models').innerHTML = '<thead><tr><th>Model</th><th>Paradigma</th><th style="text-align:left">Ringkasan</th><th>Parameter</th><th>Waktu (detik)</th><th>Status</th></tr></thead><tbody>' +
+    FM.map(([m, p, d, run]) => { const r = par[m] || {}; const pj = r.parameter_juta; const sec = r.detik_inferensi ?? r.detik_latih;
+      return `<tr><td>${run ? `<span class="sw" style="background:${col(m)}"></span>` : '<span class="sw" style="background:transparent;border:1px solid var(--line)"></span>'}${m}</td><td>${p}</td><td class="wrap-cell">${d}</td><td class="num">${pj == null ? '-' : pj === 0 ? String(NPAR[m] ?? 0) : pj < 0.001 ? `${Math.round(pj * 1e6)}` : `${fmt(pj, 1)} juta`}</td><td class="num">${sec == null ? '-' : fmt(sec, 1)}</td><td>${run ? '<span class="chip on">Dijalankan</span>' : '<span class="chip">Konseptual</span>'}</td></tr>`; }).join('') + '</tbody>';
+}
+
+let REG = 'Semua';
+function renderEval() {
+  const rs = M.map(m => ({m, ...metricRow(m, REG)})).sort((a, b) => a.MAE - b.MAE);
+  const snMAE = metricRow('SNaive-168', REG).MAE;
+  document.getElementById('h-leader').textContent = `Papan peringkat, ${REG === 'Semua' ? 'semua origin' : 'regime ' + REG}`;
+  document.getElementById('t-leader').innerHTML = '<thead><tr><th>#</th><th style="text-align:left">Model</th><th>MAE</th><th>RMSE</th><th>MAPE %</th><th>MASE</th><th>WQL</th><th>Cakupan 80%</th><th>Skill %</th></tr></thead><tbody>' +
+    rs.map((r, i) => `<tr class="${i === 0 ? 'best' : ''}"><td>${i + 1}</td><td style="text-align:left"><span class="sw" style="background:${col(r.m)}"></span>${r.m}</td><td class="num">${fmt(r.MAE, 1)}</td><td class="num">${fmt(r.RMSE, 1)}</td><td class="num">${fmt(r['MAPE (%)'])}</td><td class="num">${fmt(r.MASE, 3)}</td><td class="num">${r.WQL == null ? '-' : fmt(r.WQL, 4)}</td><td class="num">${r['Cakupan 80% (%)'] == null ? '-' : fmt(r['Cakupan 80% (%)'], 1)}</td><td class="num">${fmt((1 - r.MAE / snMAE) * 100, 1)}</td></tr>`).join('') + '</tbody>';
+  make('c-mape', {type: 'bar', data: {labels: rs.map(r => r.m), datasets: [{label: 'MAPE (%)', data: rs.map(r => r['MAPE (%)']), backgroundColor: rs.map(r => col(r.m)), borderRadius: 4, barThickness: 16}]},
+    options: baseOpts({indexAxis: 'y', interaction: {mode: 'nearest', intersect: true}, plugins: {...baseOpts().plugins, legend: {display: false}},
+      scales: {x: {...baseOpts().scales.y, beginAtZero: true}, y: {...baseOpts().scales.x, grid: {display: false}}}})});
+}
+function renderHorizon() {
+  make('c-horizon', {type: 'line', data: {labels: Array.from({length: 24}, (_, i) => i + 1), datasets: M.map(m => ({label: m, data: D.horizon[m], borderColor: col(m), backgroundColor: col(m), borderWidth: m === best ? 2.6 : 1.5, pointRadius: 0, pointHoverRadius: 4}))},
+    options: baseOpts({scales: {...baseOpts().scales, x: {...baseOpts().scales.x, title: {display: true, text: 'Jam ke depan', color: tok('--ink-2')}}}})});
+}
+
+const BT = D.backtest; let SEL = new Set([best, 'XGBoost', 'TimesFM-2.0']);
+function setupBacktest() {
+  const r = document.getElementById('origin'); r.max = BT.origins.length - 1;
+  const start = BT.origins.indexOf('2020-04-06'); r.value = start >= 0 ? start : 0;
+  renderToggles();
+  document.getElementById('band-model').innerHTML = Object.keys(BT.band).map(m => `<option ${m === best ? 'selected' : ''}>${m}</option>`).join('');
+  r.addEventListener('input', renderBacktest);
+  document.getElementById('prev').onclick = () => { r.value = Math.max(0, +r.value - 1); renderBacktest(); };
+  document.getElementById('next').onclick = () => { r.value = Math.min(+r.max, +r.value + 1); renderBacktest(); };
+  document.getElementById('model-toggles').addEventListener('change', e => { const m = e.target.dataset.m; e.target.checked ? SEL.add(m) : SEL.delete(m); renderBacktest(); renderDailyErr(); });
+  document.getElementById('band-model').addEventListener('change', renderBacktest);
+}
+function renderToggles() {
+  document.getElementById('model-toggles').innerHTML = M.map((m, i) => `<label for="tg-${i}"><input type="checkbox" id="tg-${i}" data-m="${m}" ${SEL.has(m) ? 'checked' : ''}><span class="sw" style="background:${col(m)};margin-right:0"></span>${m}</label>`).join('');
+}
+function renderBacktest() {
+  const i = +document.getElementById('origin').value, bm = document.getElementById('band-model').value;
+  document.getElementById('origin-label').textContent = BT.origins[i];
+  const rg = document.getElementById('origin-reg'); rg.textContent = BT.regime[i]; rg.className = 'chip ' + (BT.regime[i] === 'Normal' ? 'acc' : '');
+  const labels = Array.from({length: 24}, (_, h) => String((h + 1) % 24).padStart(2, '0') + '.00');
+  const ds = [];
+  if (BT.band[bm]) {
+    ds.push({label: `${bm} kuantil 0,1`, data: BT.band[bm].lo[i], borderWidth: 0, pointRadius: 0, fill: false});
+    ds.push({label: `${bm} kuantil 0,9`, data: BT.band[bm].hi[i], borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: alpha(col(bm), 0.16)});
+  }
+  ds.push({label: 'Aktual', data: BT.actual[i], borderColor: tok('--ink'), backgroundColor: tok('--ink'), borderWidth: 2.2, pointRadius: 0});
+  M.filter(m => SEL.has(m)).forEach(m => ds.push({label: m, data: BT.mean[m][i], borderColor: col(m), backgroundColor: col(m), borderWidth: 1.6, pointRadius: 0}));
+  make('c-bt', {type: 'line', data: {labels, datasets: ds}, options: baseOpts({plugins: {...baseOpts().plugins, legend: {...baseOpts().plugins.legend, labels: {...baseOpts().plugins.legend.labels, filter: it => !it.text.includes('kuantil')}}}})});
+  const mae = M.map(m => [m, BT.mean[m][i].reduce((s, v, h) => s + Math.abs(v - BT.actual[i][h]), 0) / 24]).sort((a, b) => a[1] - b[1]);
+  document.getElementById('t-day').innerHTML = '<thead><tr><th>Model</th><th>MAE</th></tr></thead><tbody>' + mae.map(([m, v], k) => `<tr class="${k === 0 ? 'best' : ''}"><td><span class="sw" style="background:${col(m)}"></span>${m}</td><td class="num">${fmt(v, 1)}</td></tr>`).join('') + '</tbody>';
+}
+function renderDailyErr() {
+  const covI = BT.origins.indexOf(D.meta.covid_start);
+  const ds = M.filter(m => SEL.has(m)).map(m => ({label: m, data: BT.mean[m].map((row, i) => row.reduce((s, v, h) => s + Math.abs(v - BT.actual[i][h]), 0) / 24), borderColor: col(m), backgroundColor: col(m), borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4}));
+  make('c-daily-err', {type: 'line', data: {labels: BT.origins, datasets: ds}, options: baseOpts({scales: {...baseOpts().scales, x: {...baseOpts().scales.x, ticks: {...baseOpts().scales.x.ticks, maxTicksLimit: 8}}}}), plugins: [vline(() => covI)]});
+}
+
+function renderDM() {
+  const s = dm.filter(r => r.Regime === 'Semua'), win = s.filter(r => r['p-value'] < 0.05 && r.DM < 0).map(r => r['Model B']);
+  document.getElementById('lead-dm').textContent = `${best} dibandingkan dengan setiap model lain pada tiga cakupan origin. Pada seluruh origin, ${best} lebih akurat secara signifikan daripada ${win.length ? win.join(', ') : 'tidak satu pun model'}.`;
+  const chip = k => k === 'Tidak berbeda signifikan' ? `<span class="chip">${k}</span>` : `<span class="chip ${k === 'A lebih akurat' ? 'on' : 'acc'}">${k}</span>`;
+  document.getElementById('t-dm').innerHTML = '<thead><tr><th>Model A</th><th>Model B</th><th>Cakupan</th><th>Selisih MAE (A - B)</th><th>DM</th><th>p-value</th><th>Kesimpulan</th></tr></thead><tbody>' +
+    dm.map(r => `<tr><td>${r['Model A']}</td><td>${r['Model B']}</td><td>${r.Regime}</td><td class="num">${fmt(r['Selisih MAE (A-B)'], 2)}</td><td class="num">${fmt(r.DM, 2)}</td><td class="num">${r['p-value'] < 0.0001 ? '< 0,0001' : fmt(r['p-value'], 4)}</td><td>${chip(r['Kesimpulan (alpha 5%)'])}</td></tr>`).join('') + '</tbody>';
+}
+
+function renderFuture() {
+  const F = D.future, n = F.hist.length, labels = [...F.hist_ts, ...F.ts].map(t => t.slice(5, 13).replace(' ', ' ') + '.00');
+  const pad = a => [...Array(n).fill(null), ...a];
+  make('c-future', {type: 'line', data: {labels, datasets: [
+      {label: 'Kuantil 0,1', data: pad(F.lo), borderWidth: 0, pointRadius: 0},
+      {label: 'Kuantil 0,9', data: pad(F.hi), borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: alpha(col('Chronos-2'), 0.18)},
+      {label: 'Aktual 7 hari terakhir', data: [...F.hist, ...Array(F.ts.length).fill(null)], borderColor: tok('--ink'), backgroundColor: tok('--ink'), borderWidth: 1.6, pointRadius: 0},
+      {label: 'Median Chronos-2', data: pad(F.mid), borderColor: col('Chronos-2'), backgroundColor: col('Chronos-2'), borderWidth: 2, pointRadius: 0}]},
+    options: baseOpts({plugins: {...baseOpts().plugins, legend: {...baseOpts().plugins.legend, labels: {...baseOpts().plugins.legend.labels, filter: it => !it.text.startsWith('Kuantil')}}},
+      scales: {...baseOpts().scales, x: {...baseOpts().scales.x, ticks: {...baseOpts().scales.x.ticks, maxTicksLimit: 9}}}})});
+}
+
+function renderText() {
+  const b = metricRow(best, 'Semua');
+  document.getElementById('lead-data').textContent = `Beban memiliki musiman harian dan mingguan yang sangat kuat, tren naik sampai 2019, serta penurunan tajam sejak pertengahan Maret 2020.`;
+  document.getElementById('lead-eval').textContent = `Diurutkan menurut MAE. ${best} unggul dengan MAPE ${fmt(b['MAPE (%)'])}%. Pilih regime untuk melihat perubahan peringkat saat terjadi perubahan struktural.`;
+  document.getElementById('meth-design').textContent = `Rolling-origin backtest: setiap hari pukul 00.00 dari 1 Januari s.d. 26 Juni 2020 (${D.meta.n_origin} origin), setiap model meramal 24 jam ke depan hanya dengan informasi sampai origin. Foundation model menerima konteks ${D.meta.CTX} jam. SARIMAX-W, SARIMAX-DHR, dan XGBoost dilatih dengan data sebelum 2020 dan tidak dilatih ulang. Regime COVID-19 dimulai ${D.meta.covid_start}.`;
+}
+
+const NPAR = {'SARIMAX-W': 10, 'SARIMAX-DHR': 29};
+function renderAll() { renderSummary(); renderText(); renderData(); renderModels(); renderEval(); renderHorizon(); renderBacktest(); renderDailyErr(); renderDM(); renderFuture(); }
+
+document.querySelectorAll('#seg-regime button').forEach(bt => bt.addEventListener('click', () => {
+  REG = bt.dataset.reg; document.querySelectorAll('#seg-regime button').forEach(x => x.setAttribute('aria-pressed', x === bt)); renderEval();
+}));
+document.querySelectorAll('[data-theme-set]').forEach(bt => bt.addEventListener('click', () => {
+  const v = bt.dataset.themeSet; v === 'auto' ? delete root.dataset.theme : root.dataset.theme = v;
+  document.querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x === bt));
+  try { localStorage.setItem('beban-theme', v); } catch (e) {}
+  renderToggles(); renderAll();
+}));
+try { const t = localStorage.getItem('beban-theme'); if (t && t !== 'auto') { root.dataset.theme = t; document.querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x.dataset.themeSet === t)); } } catch (e) {}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!root.dataset.theme) { renderToggles(); renderAll(); } });
+Chart.defaults.locale = 'id-ID';
+setupBacktest(); document.fonts.ready.then(renderAll);
+</script>
+</body>
+</html>
