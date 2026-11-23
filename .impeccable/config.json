@@ -1,0 +1,35 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "dashboard/index.html"
+        ],
+        "createdAt": "2026-11-23T03:07:25.780Z",
+        "reason": "user chose the Atlas Iklim Tiga Kota direction card on the decision page, whose palette pins atlas paper #f7f5ee"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/*.html"
+        ],
+        "createdAt": "2026-11-23T03:11:20.135Z",
+        "reason": "decision-round sketches; user chose the Atlas Iklim card whose palette pins atlas paper #f7f5ee"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/*.html"
+        ],
+        "createdAt": "2026-11-23T03:38:13.537Z",
+        "reason": "unchosen decision-round sketches, intentionally in other worlds' fonts; gitignored, not shipped"
+      }
+    ]
+  }
+}

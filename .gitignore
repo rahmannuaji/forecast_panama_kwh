@@ -4,3 +4,10 @@ models/chronos-bolt-small/
 models/timesfm-2.0-500m-pytorch/
 __pycache__/
 .ipynb_checkpoints/
+
+# Model lama (SARIMAX) yang tidak dipakai lagi
+models/sarimax_*.pkl
+
+# Berkas kerja Impeccable (mock dan screenshot review)
+.impeccable/mocks/
+.impeccable/review/

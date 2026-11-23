@@ -3,470 +3,384 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Peramalan Beban Listrik Panama</title>
+<title>Atlas Beban Panama · Peramalan Beban Listrik 24 Jam</title>
+<meta name="description" content="Dashboard interaktif peramalan beban listrik per jam Panama dengan Chronos-2, Chronos-Bolt, TimesFM 2.0, dan XGBoost.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* Layout: kolom tunggal 1240px, ringkasan di atas lalu panel grid 12 kolom per bab; radius panel 10px, kontrol pill 999px */
-:root {
-  --bg: #f4f6f8; --surface: #fcfcfb; --ink: #14171b; --ink-2: #4c535c; --line: #e1e4e8; --accent: #2a78d6;
-  --accent-soft: #e6effb; --good: #0b7a0b; --good-soft: #e3f3e3; --neutral-soft: #eef0f2;
-  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-  color-scheme: light;
+:root{
+  --paper:#f7f5ee; --panel:#fbfaf6; --ink:#1d1d1b; --ink-2:#45443f; --muted:#5b5a55; --rule:#1d1d1b; --hair:#d9d4c6; --wash:#efebe0;
+  --temp:#c8372d; --rain:#2b6cb0;
+  --m-c2:#a3366f; --m-bolt:#a8690c; --m-tfm:#3d8a4a; --m-xgb:#5a4aa8;
+  --c-toc:#5e5b53; --c-san:#7d796d; --c-dav:#959184;
+  --focus:#c8372d; --ease:cubic-bezier(.16,1,.3,1);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #111315; --surface: #1a1c1f; --ink: #eef0f2; --ink-2: #a8b0b9; --line: #2c3036; --accent: #3987e5;
-    --accent-soft: #1b2b40; --good: #4cc24c; --good-soft: #17301a; --neutral-soft: #24272b; color-scheme: dark;
-  }
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--paper);color:var(--ink);font-family:'Libre Franklin',system-ui,sans-serif;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;scrollbar-color:#b9b3a3 var(--paper)}
+body{min-height:100dvh;font-variant-numeric:tabular-nums}
+::selection{background:#c8372d;color:#fff}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+a{color:inherit;text-underline-offset:3px}
+h1,h2,h3{font-weight:800;letter-spacing:-.015em;line-height:1.1;text-wrap:balance}
+p{max-width:72ch}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:10;background:var(--paper);border-bottom:1px solid var(--rule)}
+.top-in{max-width:1440px;margin:0 auto;padding:0 40px;display:flex;align-items:center;gap:40px;min-height:68px}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.01em;white-space:nowrap;text-decoration:none}
+.brand span{font-weight:500;color:var(--muted);font-size:14px;margin-left:8px}
+.tabs{display:flex;gap:28px;overflow-x:auto;scrollbar-width:none}
+.tabs a{display:block;padding:22px 0 20px;font-size:15px;text-decoration:none;color:var(--ink-2);white-space:nowrap;box-shadow:inset 0 0 0 var(--temp);transition:box-shadow .3s var(--ease),color .2s}
+.tabs a:hover{color:var(--ink)}
+.tabs a[aria-current="page"]{color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--temp)}
+
+/* layout */
+main{max-width:1440px;margin:0 auto;padding:36px 40px 80px}
+section[data-tab]{display:none}
+section[data-tab].on{display:block;animation:rise .55s var(--ease)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.h1{font-size:clamp(30px,3.4vw,46px);max-width:34ch;margin-bottom:14px}
+.lede{font-size:17px;color:var(--ink-2);margin-bottom:28px}
+.grid{display:grid;gap:22px}
+.g-home{grid-template-columns:repeat(3,minmax(0,1fr)) 300px}
+.g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g-21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.g-12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.span-3{grid-column:1/4}.span-all{grid-column:1/-1}
+.block{margin-top:56px}
+.block>h2{font-size:28px;margin-bottom:8px}
+.block>p{color:var(--ink-2);margin-bottom:20px}
+
+/* panels */
+.panel{border:1px solid var(--rule);background:var(--panel);padding:20px 22px;min-width:0}
+.panel h3,.panel h2.pt{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.panel .sub{font-size:14px;color:var(--muted);margin:3px 0 12px}
+.panel .note{font-size:14px;color:var(--ink-2);margin-top:12px}
+.chart{position:relative;height:300px}
+.chart.tall{height:380px}.chart.short{height:220px}.chart.mini{height:200px}
+.city{cursor:pointer;transition:background .25s var(--ease)}
+.city:hover{background:#fff}
+.city .k{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.city .k small{font-size:13px;color:var(--muted)}
+.city button.go{margin-top:10px}
+
+/* findings column */
+.facts{display:grid;gap:0;align-content:start;border-top:3px solid var(--ink);grid-row:span 2}
+.city{align-self:start}
+.fact{padding:14px 0 16px;border-bottom:1px solid var(--hair)}
+.fact b{display:block;font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.fact span{display:block;font-size:14px;color:var(--ink-2);margin-top:6px}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:18px 28px;align-items:flex-end;padding:14px 0 18px;margin-bottom:6px;border-bottom:1px solid var(--hair)}
+.ctl{display:grid;gap:6px}
+.ctl>label,.ctl>.lab{font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg{display:inline-flex;border:1px solid var(--rule)}
+.seg button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--ink);padding:8px 14px;min-height:40px;cursor:pointer;border-right:1px solid var(--rule);transition:background .2s var(--ease),color .2s}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--wash)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+select,input[type=date]{font:inherit;font-size:14px;color:var(--ink);background-color:var(--panel);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:40px;cursor:pointer}
+select{appearance:none;-webkit-appearance:none;padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpolyline points='1,1 6,6 11,1' fill='none' stroke='%231d1d1b' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+select:hover,input[type=date]:hover{background-color:#fff}
+input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.75}
+input[type=range]{accent-color:var(--temp);width:240px}
+.chk{display:inline-flex;align-items:center;gap:8px;font-size:14px;min-height:40px;cursor:pointer}
+.chk input{accent-color:var(--ink);width:18px;height:18px}
+.chk i{width:22px;height:3px;display:inline-block}
+.btn svg{display:block}.btn{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--rule);background:transparent;color:var(--ink);padding:8px 14px;min-height:40px;cursor:pointer;transition:background .2s var(--ease)}
+.btn:hover{background:var(--wash)}
+.btn:active{transform:translateY(1px)}
+.readout{font-size:15px;font-weight:700;min-width:5ch;display:inline-block}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--hair);white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child,.tbl.l2 th:nth-child(2),.tbl.l2 td:nth-child(2){text-align:left}
+.tbl thead th{font-weight:700;border-bottom:1px solid var(--rule);color:var(--ink)}
+.tbl tr.hl td{font-weight:700}
+.tbl .sw{display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-1px}
+.scroll{overflow-x:auto;padding:0 2px 4px 0}
+.tag{display:inline-block;font-size:12px;font-weight:600;border:1px solid var(--rule);padding:2px 8px;margin-right:6px}
+.tag.red{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* heatmap */
+.heat{display:grid;grid-template-columns:34px repeat(7,1fr);gap:2px;font-size:12px}
+.heat div{height:13px}
+.heat .hl{color:var(--muted);text-align:right;padding-right:6px;line-height:13px;height:13px}
+.heat .hd{text-align:center;color:var(--ink-2);font-weight:600;height:18px}
+.heat .c{cursor:default}
+.legend-ramp{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:10px}
+.legend-ramp i{flex:1;height:8px;max-width:200px}
+
+/* flow diagram */
+.flow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:0;overflow-x:auto;padding:8px 0 4px}
+.stop{position:relative;padding:34px 16px 0 0}
+.stop::before{content:"";position:absolute;left:0;right:0;top:12px;height:6px;background:var(--line,var(--ink))}
+.stop:first-child::before{left:10px}.stop:last-child::before{right:calc(100% - 10px)}
+.stop::after{content:"";position:absolute;left:0;top:4px;width:22px;height:22px;border-radius:50%;background:var(--panel);border:4px solid var(--line,var(--ink))}
+.stop b{display:block;font-size:15px}
+.stop span{display:block;font-size:13.5px;color:var(--ink-2);margin-top:4px;max-width:28ch}
+.explain{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;margin-top:18px}
+.explain h4{font-size:15px;margin-bottom:4px}
+.explain p,.explain li{font-size:15px;color:var(--ink-2)}
+.explain ul{padding-left:18px;display:grid;gap:4px}
+
+.what{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:3px solid var(--ink)}
+.what>div{padding:18px 22px 20px 0;border-right:1px solid var(--hair)}
+.what>div+div{padding-left:22px}.what>div:last-child{border-right:0}
+.what h3{font-size:17px;margin-bottom:6px}
+.what p,.what li{font-size:15px;color:var(--ink-2)}
+.what ul{padding-left:18px}
+.callout{border:1px solid var(--rule);background:#fff;padding:16px 20px;font-size:15px;margin-top:18px}
+.callout b{font-weight:700}
+.delta{display:flex;gap:28px;flex-wrap:wrap;margin-top:12px}
+.delta div b{display:block;font-size:30px;font-weight:800;line-height:1.05}
+.delta div span{font-size:13px;color:var(--muted)}
+footer{border-top:1px solid var(--rule);margin-top:72px;padding-top:20px;font-size:14px;color:var(--ink-2);display:grid;gap:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:13px;padding:6px 9px;opacity:0;transition:opacity .15s;z-index:20}
+
+@media (max-width:1100px){
+  .g-home{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .facts{grid-column:1/-1;grid-row:auto;grid-template-columns:repeat(2,1fr);gap:0 22px}
 }
-:root[data-theme="dark"] {
-  --bg: #111315; --surface: #1a1c1f; --ink: #eef0f2; --ink-2: #a8b0b9; --line: #2c3036; --accent: #3987e5;
-  --accent-soft: #1b2b40; --good: #4cc24c; --good-soft: #17301a; --neutral-soft: #24272b; color-scheme: dark;
+@media (max-width:820px){
+  .top-in{padding:0 18px;gap:18px;flex-wrap:wrap}.tabs{width:100%;gap:22px;-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent);mask-image:linear-gradient(90deg,#000 82%,transparent);padding-right:40px}
+  .tbl th,.tbl td{padding:7px 6px}.tbl th{white-space:normal}.tabs a{padding:12px 0}
+  main{padding:24px 18px 60px}
+  .g-home,.g-2,.g-3,.g-21,.g-12,.explain,.what{grid-template-columns:1fr}
+  .span-3,.span-all{grid-column:auto}
+  .facts{grid-template-columns:1fr}
+  .what>div,.what>div+div{padding:16px 0;border-right:0;border-bottom:1px solid var(--hair)}
+  input[type=range]{width:100%}
 }
-* { box-sizing: border-box; }
-html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); -webkit-font-smoothing: antialiased; }
-.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
-header.top { border-bottom: 1px solid var(--line); background: var(--surface); }
-header.top .wrap { display: flex; gap: 24px; align-items: center; justify-content: space-between; padding-top: 22px; padding-bottom: 18px; flex-wrap: wrap; }
-h1 { font-size: 26px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
-h2 { font-size: 20px; margin: 0 0 6px; letter-spacing: -0.005em; text-wrap: balance; }
-h3 { font-size: 14.5px; margin: 0 0 10px; font-weight: 600; }
-p { margin: 0 0 10px; max-width: 72ch; }
-.sub { color: var(--ink-2); margin: 0; }
-nav.sec { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
-nav.sec .wrap { display: flex; gap: 4px; overflow-x: auto; padding-top: 8px; padding-bottom: 8px; }
-nav.sec a { color: var(--ink-2); text-decoration: none; padding: 6px 12px; border-radius: 999px; white-space: nowrap; font-size: 14px; }
-nav.sec a:hover { background: var(--neutral-soft); color: var(--ink); }
-section { padding: 34px 0 6px; scroll-margin-top: 56px; }
-.lead { color: var(--ink-2); margin-bottom: 18px; }
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
-.s12 { grid-column: span 12; } .s8 { grid-column: span 8; } .s7 { grid-column: span 7; } .s6 { grid-column: span 6; } .s5 { grid-column: span 5; } .s4 { grid-column: span 4; } .s3 { grid-column: span 3; }
-@media (max-width: 900px) { .s8, .s7, .s6, .s5, .s4 { grid-column: span 12; } .s3 { grid-column: span 6; } }
-@media (max-width: 520px) { .s3 { grid-column: span 12; } h1 { font-size: 22px; } }
-.kpi .v { font: 600 30px/1.1 var(--font-mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.kpi .l { color: var(--ink-2); font-size: 13.5px; margin-top: 6px; }
-.kpi .t { font-size: 13px; color: var(--ink-2); margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
-.chart { position: relative; height: 300px; }
-.chart.tall { height: 360px; } .chart.short { height: 250px; }
-.note { font-size: 13.5px; color: var(--ink-2); margin-top: 10px; }
-.tbl-wrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
-th, td { text-align: right; padding: 7px 10px; white-space: nowrap; }
-th:first-child, td:first-child { text-align: left; }
-thead th { color: var(--ink-2); font-weight: 500; border-bottom: 1px solid var(--line); }
-tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
-td.num { font-family: var(--font-mono); font-size: 13px; }
-tr.best td { background: var(--accent-soft); }
-.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
-.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; background: var(--neutral-soft); color: var(--ink-2); white-space: nowrap; }
-.chip.on { background: var(--good-soft); color: var(--good); }
-.chip.acc { background: var(--accent-soft); color: var(--accent); }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; background: var(--bg); }
-.seg button, .btn { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink-2); padding: 5px 14px; border-radius: 999px; cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 14%, transparent); }
-.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-.btn:hover, .seg button:hover { color: var(--ink); }
-.btn:active { transform: translateY(1px); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-bottom: 14px; }
-.controls label { font-size: 13.5px; color: var(--ink-2); }
-input[type="range"] { width: min(420px, 100%); accent-color: var(--accent); }
-.toggles { display: flex; flex-wrap: wrap; gap: 6px; }
-.toggles label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px 3px 9px; cursor: pointer; color: var(--ink); background: var(--surface); }
-.toggles input { accent-color: var(--accent); margin: 0; }
-.mono { font-family: var(--font-mono); }
-.heat { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 2px; font-size: 11.5px; }
-.heat div { height: 11px; border-radius: 2px; }
-.heat .lab { height: auto; color: var(--ink-2); text-align: right; padding-right: 6px; line-height: 11px; font-family: var(--font-mono); font-size: 10.5px; }
-.heat .colh { height: auto; text-align: center; color: var(--ink-2); padding-bottom: 4px; }
-.legend-ramp { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-top: 10px; }
-.legend-ramp span.bar { flex: 0 0 140px; height: 8px; border-radius: 4px; }
-.fm-status { white-space: normal; }
-td.wrap-cell { white-space: normal; text-align: left; min-width: 220px; }
-footer { color: var(--ink-2); font-size: 13px; padding: 30px 0 50px; }
-footer a, .ref a { color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="wrap">
-    <div>
-      <h1>Peramalan Beban Listrik Panama</h1>
-      <p class="sub" id="subtitle">Perbandingan foundation model deret waktu dengan model statistik dan machine learning, horizon 24 jam.</p>
-    </div>
-    <div class="seg" role="group" aria-label="Tema tampilan">
-      <button type="button" data-theme-set="light" aria-pressed="false">Terang</button>
-      <button type="button" data-theme-set="auto" aria-pressed="true">Sistem</button>
-      <button type="button" data-theme-set="dark" aria-pressed="false">Gelap</button>
-    </div>
+<header class="top"><div class="top-in">
+  <a class="brand" href="#beranda">Atlas Beban Panama<span>peramalan 24 jam</span></a>
+  <nav class="tabs" aria-label="Bagian dashboard">
+    <a href="#beranda">Beranda</a><a href="#eksplorasi">Eksplorasi data</a><a href="#cuaca">Cuaca tiga kota</a><a href="#performa">Performa model</a><a href="#prediksi">Hasil prediksi</a>
+  </nav>
+</div></header>
+
+<main>
+<!-- ============================================================ BERANDA -->
+<section data-tab="beranda" aria-labelledby="t-home">
+  <h1 class="h1" id="t-home">Tiga kota, satu kurva beban: seberapa besar cuaca menggerakkan listrik Panama?</h1>
+  <p class="lede" id="home-lede"></p>
+  <div class="grid g-home">
+    <article class="panel city" data-city="Tocumen" tabindex="0"><div class="k"><h2 class="pt">Tocumen</h2><small>Kota Panama</small></div><p class="sub">Suhu bulanan (atas) dan presipitasi cair (bawah), skala sama untuk ketiga kota</p><div class="chart short"><canvas id="clim-Tocumen"></canvas></div><p class="note" id="clim-note-Tocumen"></p></article>
+    <article class="panel city" data-city="Santiago" tabindex="0"><div class="k"><h2 class="pt">Santiago</h2><small>Provinsi Veraguas</small></div><p class="sub">Suhu bulanan (atas) dan presipitasi cair (bawah), skala sama untuk ketiga kota</p><div class="chart short"><canvas id="clim-Santiago"></canvas></div><p class="note" id="clim-note-Santiago"></p></article>
+    <article class="panel city" data-city="David" tabindex="0"><div class="k"><h2 class="pt">David</h2><small>Provinsi Chiriquí</small></div><p class="sub">Suhu bulanan (atas) dan presipitasi cair (bawah), skala sama untuk ketiga kota</p><div class="chart short"><canvas id="clim-David"></canvas></div><p class="note" id="clim-note-David"></p></article>
+    <aside class="facts" aria-label="Temuan utama" id="facts"></aside>
+    <article class="panel span-3"><h2 class="pt">Beban listrik nasional harian, 2015 sampai Juni 2020</h2><p class="sub">Area abu-abu adalah periode uji (178 hari). Garis putus-putus menandai 15 Maret 2020, awal pembatasan COVID-19. Garis tebal adalah rata-rata 30 hari.</p><div class="chart"><canvas id="home-daily"></canvas></div></article>
   </div>
-</header>
-<nav class="sec" aria-label="Bagian">
-  <div class="wrap">
-    <a href="#ringkasan">Ringkasan</a><a href="#data">Data</a><a href="#model">Model</a><a href="#evaluasi">Evaluasi</a><a href="#backtest">Backtest</a><a href="#uji">Uji DM</a><a href="#ke-depan">24 jam ke depan</a><a href="#metodologi">Metodologi</a>
+
+  <div class="block">
+    <h2>Apa yang diramal?</h2>
+    <p>Ringkasan studi dalam tiga bagian. Klik tab di atas untuk melihat detailnya.</p>
+    <div class="what">
+      <div><h3>Target</h3><p>Satu variabel: <b>beban listrik nasional Panama per jam</b> (<code>nat_demand</code>, MWh). Cuaca, hari libur, dan masa sekolah tidak diramal. Ketiganya hanya dipakai sebagai informasi bantu (kovariat).</p></div>
+      <div><h3>Cara menguji</h3><p>Setiap hari pukul 00.00, model hanya melihat data sampai jam itu, lalu meramal 24 jam berikutnya. Proses ini diulang selama 178 hari (1 Januari sampai 26 Juni 2020) dan mencakup masa normal serta masa pembatasan COVID-19.</p></div>
+      <div><h3>Empat model</h3><ul id="home-models"></ul></div>
+    </div>
+    <div class="callout" id="home-best"></div>
   </div>
-</nav>
+</section>
 
-<main class="wrap">
-  <section id="ringkasan">
-    <h2>Ringkasan temuan</h2>
-    <p class="lead" id="lead-ringkasan"></p>
-    <div class="grid" id="kpis"></div>
-  </section>
+<!-- ============================================================ EKSPLORASI -->
+<section data-tab="eksplorasi" aria-labelledby="t-eda">
+  <h1 class="h1" id="t-eda">Ritme beban: tren, musim, hari libur, dan guncangan COVID-19</h1>
+  <p class="lede" id="eda-lede"></p>
+  <div class="controls">
+    <div class="ctl"><span class="lab">Rentang</span><div class="seg" id="eda-range"><button data-v="all" aria-pressed="true">2015–2020</button><button data-v="2019">2019</button><button data-v="2020">2020</button></div></div>
+    <label class="chk"><input type="checkbox" id="eda-week" checked>Rata-rata 7 hari</label>
+  </div>
+  <article class="panel"><h2 class="pt">Beban harian</h2><p class="sub" id="eda-daily-sub"></p><div class="chart tall"><canvas id="eda-daily"></canvas></div></article>
 
-  <section id="data">
-    <h2>Karakteristik data</h2>
-    <p class="lead" id="lead-data"></p>
-    <div class="grid">
-      <div class="panel s12">
-        <h3>Rata-rata beban harian, 2015 s.d. 2020 (MWh)</h3>
-        <div class="chart"><canvas id="c-daily" aria-label="Grafik rata-rata beban harian"></canvas></div>
-        <p class="note">Garis vertikal menandai 15 Maret 2020, awal regime COVID-19 dalam evaluasi. Area abu-abu adalah periode uji backtest.</p>
-      </div>
-      <div class="panel s5">
-        <h3>Rata-rata beban per jam dan hari, 2019</h3>
-        <div id="heat" class="heat" role="img" aria-label="Peta panas beban per jam dan hari"></div>
-        <div class="legend-ramp"><span id="heat-min" class="mono"></span><span class="bar" id="heat-bar"></span><span id="heat-max" class="mono"></span><span>MWh</span></div>
-      </div>
-      <div class="panel s7">
-        <h3>Profil harian: hari biasa vs hari libur nasional</h3>
-        <div class="chart short"><canvas id="c-holiday"></canvas></div>
-        <p class="note" id="note-holiday"></p>
-      </div>
-      <div class="panel s4">
-        <h3>Kekuatan komponen MSTL (2019)</h3>
-        <div class="tbl-wrap"><table id="t-strength"></table></div>
-        <p class="note">Indeks 0 sampai 1: 1 - Var(residu) / Var(komponen + residu). Nilai mendekati 1 berarti komponen sangat dominan.</p>
-      </div>
-      <div class="panel s4">
-        <h3>Korelasi beban dengan cuaca</h3>
-        <div class="tbl-wrap"><table id="t-corr"></table></div>
-      </div>
-      <div class="panel s4">
-        <h3>Ringkasan tahunan</h3>
-        <div class="tbl-wrap"><table id="t-year"></table></div>
-        <p class="note">Tahun 2020 hanya sampai 27 Juni dan memuat periode pembatasan COVID-19.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="model">
-    <h2>Model yang dibandingkan</h2>
-    <p class="lead">Delapan model dari tiga paradigma. Foundation model dipakai tanpa pelatihan pada data Panama (zero-shot). Moirai, Lag-Llama, dan TimeGPT dibahas secara konseptual karena kendala teknis.</p>
-    <div class="panel">
-      <div class="tbl-wrap"><table id="t-models"></table></div>
-    </div>
-  </section>
-
-  <section id="evaluasi">
-    <h2>Evaluasi akurasi</h2>
-    <p class="lead" id="lead-eval"></p>
+  <div class="block">
+    <h2>Satu minggu, jam demi jam</h2>
+    <p>Pilih tanggal awal untuk melihat pola harian selama tujuh hari. Hari libur nasional diberi latar abu-abu.</p>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Pilih regime" id="seg-regime">
-        <button type="button" data-reg="Semua" aria-pressed="true">Semua origin</button>
-        <button type="button" data-reg="Normal" aria-pressed="false">Normal</button>
-        <button type="button" data-reg="COVID-19" aria-pressed="false">COVID-19</button>
-      </div>
+      <div class="ctl"><label for="eda-date">Tanggal awal</label><input type="date" id="eda-date" min="2015-01-03" max="2020-06-20" value="2020-04-06"></div>
+      <div class="ctl"><span class="lab">Contoh</span><div class="seg" id="eda-preset"><button data-v="2019-03-04">Minggu biasa 2019</button><button data-v="2020-04-06">Pekan Suci 2020</button><button data-v="2019-12-23">Natal 2019</button></div></div>
     </div>
-    <div class="grid">
-      <div class="panel s12">
-        <h3 id="h-leader">Papan peringkat</h3>
-        <div class="tbl-wrap"><table id="t-leader"></table></div>
-        <p class="note">MASE &lt; 1 berarti lebih akurat daripada seasonal naive mingguan di data latih. WQL mengukur akurasi seluruh distribusi ramalan (makin kecil makin baik). Cakupan 80% idealnya mendekati 80. Skill = penurunan MAE relatif terhadap SNaive-168.</p>
-      </div>
-      <div class="panel s5">
-        <h3>MAPE per model (%)</h3>
-        <div class="chart"><canvas id="c-mape"></canvas></div>
-      </div>
-      <div class="panel s7">
-        <h3>MAE menurut horizon (MWh)</h3>
-        <div class="chart"><canvas id="c-horizon"></canvas></div>
-        <p class="note">Klik nama model pada legenda untuk menyembunyikan atau menampilkan garis.</p>
-      </div>
-    </div>
-  </section>
+    <article class="panel"><h3 id="eda-week-title">Beban per jam</h3><p class="sub" id="eda-week-sub"></p><div class="chart"><canvas id="eda-hourly"></canvas></div></article>
+  </div>
 
-  <section id="backtest">
-    <h2>Penjelajah backtest</h2>
-    <p class="lead">Pilih hari origin untuk melihat ramalan 24 jam setiap model terhadap nilai aktual.</p>
-    <div class="panel">
-      <div class="controls">
-        <button class="btn" type="button" id="prev" aria-label="Hari sebelumnya">Sebelumnya</button>
-        <label for="origin">Origin <span class="mono" id="origin-label"></span> <span class="chip" id="origin-reg"></span></label>
-        <input type="range" id="origin" min="0" value="0" step="1">
-        <button class="btn" type="button" id="next" aria-label="Hari berikutnya">Berikutnya</button>
-      </div>
-      <div class="controls">
-        <div class="toggles" id="model-toggles" role="group" aria-label="Model yang ditampilkan"></div>
-        <label for="band-model">Interval 80% untuk</label>
-        <select id="band-model" class="btn"></select>
-      </div>
-      <div class="grid">
-        <div class="s8"><div class="chart tall"><canvas id="c-bt"></canvas></div></div>
-        <div class="s4"><h3>MAE pada hari ini (MWh)</h3><div class="tbl-wrap"><table id="t-day"></table></div></div>
-      </div>
+  <div class="block">
+    <h2>Musiman harian, mingguan, dan efek hari libur</h2>
+    <p id="eda-season-p"></p>
+    <div class="grid g-2">
+      <article class="panel"><h3>Rata-rata beban jam × hari (2019)</h3><p class="sub">Arahkan kursor ke sel untuk melihat nilainya</p><div class="heat" id="heat" role="img" aria-label="Peta panas rata-rata beban per jam dan hari, 2019"></div><div class="legend-ramp" id="heat-leg"></div></article>
+      <article class="panel"><h3>Profil harian: hari biasa vs libur nasional</h3><p class="sub">Rata-rata beban per jam, 2015–2020</p><div class="chart"><canvas id="eda-holiday"></canvas></div><p class="note" id="eda-holiday-note"></p></article>
+      <article class="panel"><h3>Rata-rata beban per bulan, per tahun</h3><p class="sub">Warna makin gelap berarti tahun makin baru. Klik legenda untuk menyembunyikan tahun.</p><div class="chart"><canvas id="eda-monthly"></canvas></div></article>
+      <article class="panel"><h3>Ringkasan tahunan</h3><p class="sub">Statistik beban per jam (MWh) dan pertumbuhan rata-rata</p><div class="scroll"><table class="tbl" id="tbl-yearly"></table></div></article>
     </div>
-    <div class="panel" style="margin-top:16px">
-      <h3>MAE harian sepanjang periode uji (MWh)</h3>
-      <div class="chart"><canvas id="c-daily-err"></canvas></div>
-      <p class="note">Setiap titik adalah rata-rata galat absolut 24 jam untuk satu origin. Model yang dicentang di atas ikut tampil di sini.</p>
-    </div>
-  </section>
+  </div>
 
-  <section id="uji">
-    <h2>Uji Diebold-Mariano</h2>
-    <p class="lead" id="lead-dm"></p>
-    <div class="panel">
-      <div class="tbl-wrap"><table id="t-dm"></table></div>
-      <p class="note">H0: akurasi kedua model sama. Kerugian = rata-rata galat absolut harian; varians HAC Newey-West lag 5; DM &lt; 0 berarti model A lebih akurat.</p>
+  <div class="block">
+    <h2>Struktur deret: dekomposisi, autokorelasi, dan stasioneritas</h2>
+    <p>Bagian ini menunjukkan alasan model memakai konteks panjang (paling sedikit 168 jam) dan lag 24 serta 168 jam.</p>
+    <div class="grid g-2">
+      <article class="panel"><h3>Kekuatan komponen (MSTL, 2019)</h3><p class="sub">0 berarti tidak ada, 1 berarti sangat kuat</p><div class="chart short"><canvas id="eda-strength"></canvas></div><div class="scroll"><table class="tbl" id="tbl-stat" style="margin-top:14px"></table></div></article>
+      <article class="panel"><h3>Autokorelasi beban (ACF, 2019)</h3><p class="sub">Korelasi beban dengan dirinya sendiri k jam sebelumnya. Puncak pada 24 dan 168 jam menunjukkan pola harian dan mingguan.</p><div class="chart tall"><canvas id="eda-acf"></canvas></div><p class="note" id="eda-anom"></p></article>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="ke-depan">
+<!-- ============================================================ CUACA -->
+<section data-tab="cuaca" aria-labelledby="t-w">
+  <h1 class="h1" id="t-w">Cuaca di Tocumen, Santiago, dan David, dan hubungannya dengan beban</h1>
+  <p class="lede">Data cuaca berasal dari tiga kota. Pilih kota dan variabel untuk melihat seberapa erat cuaca berhubungan dengan beban listrik nasional.</p>
+  <div class="controls">
+    <div class="ctl"><span class="lab">Kota</span><div class="seg" id="w-city"><button data-v="Tocumen" aria-pressed="true">Tocumen</button><button data-v="Santiago">Santiago</button><button data-v="David">David</button></div></div>
+    <div class="ctl"><label for="w-var">Variabel cuaca</label><select id="w-var"><option value="T2M">Suhu 2 m (°C)</option><option value="QV2M">Kelembapan 2 m (kg/kg)</option><option value="TQL">Presipitasi cair (l/m²)</option><option value="W2M">Kecepatan angin 2 m (m/s)</option></select></div>
+    <div class="ctl"><span class="lab">Hari yang dipakai</span><div class="seg" id="w-days"><button data-v="kerja" aria-pressed="true">Hari kerja biasa, sebelum COVID</button><button data-v="semua">Semua hari</button></div></div>
+  </div>
+  <div class="grid g-21">
+    <article class="panel"><h2 class="pt" id="w-sc-title"></h2><p class="sub" id="w-sc-sub"></p><div class="chart tall"><canvas id="w-scatter"></canvas></div></article>
+    <article class="panel"><h2 class="pt">Ringkasan hubungan</h2><p class="sub">Dihitung dari titik yang tampil di plot sebar</p><div class="delta" id="w-stats"></div><p class="note" id="w-insight"></p></article>
+  </div>
+  <div class="block">
+    <h2>Korelasi semua variabel dan kota</h2>
+    <p>Korelasi per jam terlihat tinggi karena beban dan suhu sama-sama naik di siang hari. Pilih “di jam yang sama” untuk menghapus pola harian bersama itu.</p>
+    <div class="controls"><div class="ctl"><span class="lab">Jenis korelasi</span><div class="seg" id="w-corr-kind"><button data-v="r_per_jam" aria-pressed="true">Per jam</button><button data-v="r_harian">Rata-rata harian</button><button data-v="within">Di jam yang sama</button></div></div></div>
+    <div class="grid g-2">
+      <article class="panel"><h3>Matriks korelasi Pearson dengan beban</h3><p class="sub">Makin gelap selnya, makin kuat hubungannya. Tanda − berarti hubungan negatif.</p><div class="scroll"><table class="tbl" id="tbl-corr"></table></div></article>
+      <article class="panel"><h3>Korelasi suhu–beban di dalam jam yang sama</h3><p class="sub">Satu titik per jam (0–23) untuk tiap kota</p><div class="chart"><canvas id="w-rhour"></canvas></div></article>
+    </div>
+  </div>
+  <div class="block">
+    <h2>Profil harian dan bulanan</h2>
+    <div class="grid g-2">
+      <article class="panel"><h3 id="w-diur-title"></h3><p class="sub">Indeks: rata-rata harian = 100, sehingga bentuk kurvanya bisa dibandingkan pada satu sumbu</p><div class="chart"><canvas id="w-diurnal"></canvas></div></article>
+      <article class="panel"><h3 id="w-mon-title"></h3><p class="sub">Rata-rata bulanan 2015–2020 di tiga kota</p><div class="chart"><canvas id="w-monthly"></canvas></div></article>
+      <article class="panel span-all"><h3>Statistik cuaca per kota</h3><p class="sub">Seluruh data per jam, 2015–2020. Presipitasi dalam l/m² (README dataset). README menyebut kelembapan dalam %, tetapi nilainya 0,01–0,02 sehingga lebih sesuai kelembapan spesifik (kg/kg).</p><div class="scroll"><table class="tbl l2" id="tbl-wstats"></table></div></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ PERFORMA -->
+<section data-tab="performa" aria-labelledby="t-p">
+  <h1 class="h1" id="t-p">Model mana yang paling akurat, dan seberapa yakin kita?</h1>
+  <p class="lede">Semua angka berasal dari backtest 178 hari × 24 jam. Gunakan sakelar di bawah untuk memilih periode, metrik, dan apakah Chronos-2 memakai kovariat.</p>
+  <div class="controls">
+    <div class="ctl"><span class="lab">Periode</span><div class="seg" id="p-reg"><button data-v="Semua" aria-pressed="true">Semua (178 hari)</button><button data-v="Normal">Normal</button><button data-v="COVID-19">COVID-19</button></div></div>
+    <div class="ctl"><label for="p-metric">Metrik</label><select id="p-metric"><option value="MAPE (%)">MAPE (%)</option><option value="MAE">MAE (MWh)</option><option value="RMSE">RMSE (MWh)</option><option value="MASE">MASE</option><option value="WQL">WQL (probabilistik)</option><option value="Cakupan 80% (%)">Cakupan interval 80% (%)</option></select></div>
+    <label class="chk"><input type="checkbox" class="kov" checked>Chronos-2 memakai kovariat cuaca dan kalender</label>
+  </div>
+  <div class="grid g-21">
+    <article class="panel"><h2 class="pt" id="p-bar-title"></h2><p class="sub" id="p-bar-sub"></p><div class="chart"><canvas id="p-bar"></canvas></div></article>
+    <article class="panel"><h2 class="pt">Cara membaca metrik</h2><ul class="note" style="padding-left:18px;display:grid;gap:6px;margin-top:8px">
+      <li><b>MAE</b>: rata-rata selisih absolut ramalan dan aktual, dalam MWh.</li>
+      <li><b>MAPE</b>: MAE dalam persen terhadap beban aktual.</li>
+      <li><b>MASE</b>: MAE dibagi galat ramalan “sama dengan minggu lalu” pada data latih. Nilai di bawah 1 berarti lebih baik dari cara naif itu.</li>
+      <li><b>WQL</b>: ketepatan seluruh kuantil ramalan. Makin kecil makin baik. XGBoost tidak punya nilai ini karena hanya memberi satu angka.</li>
+      <li><b>Cakupan 80%</b>: persentase aktual yang jatuh di dalam interval 80%. Idealnya 80%.</li></ul></article>
+  </div>
+  <div class="block"><article class="panel"><h3>Tabel metrik lengkap</h3><p class="sub" id="p-tbl-sub"></p><div class="scroll"><table class="tbl" id="tbl-metrics"></table></div></article></div>
+  <div class="block">
+    <h2>Akurasi menurut jam dan menurut hari</h2>
+    <div class="grid g-2">
+      <article class="panel"><h3>MAE menurut horizon</h3><p class="sub">Karena ramalan dibuat pukul 00.00, horizon h sama dengan jam ke-h hari itu (178 hari)</p><div class="chart"><canvas id="p-horizon"></canvas></div></article>
+      <article class="panel"><h3>MAE harian selama periode uji</h3><p class="sub">Rata-rata galat 24 jam setiap hari. Garis putus-putus adalah awal pembatasan COVID-19.</p><div class="chart"><canvas id="p-daily"></canvas></div></article>
+    </div>
+  </div>
+  <div class="block">
+    <h2>Apakah selisihnya signifikan?</h2>
+    <p>Uji Diebold-Mariano membandingkan galat harian dua model. Jika p &lt; 0,05, selisih akurasinya dianggap nyata dan bukan kebetulan.</p>
+    <article class="panel"><div class="scroll"><table class="tbl" id="tbl-dm"></table></div><p class="note" id="dm-note"></p></article>
+  </div>
+  <div class="block">
+    <h2>Alur model</h2>
+    <p>Semua model mengikuti alur uji yang sama. Pilih model untuk melihat bagaimana ia mengubah data menjadi ramalan.</p>
+    <article class="panel">
+      <h3>Alur uji bersama (rolling-origin backtest)</h3>
+      <div class="flow" style="--line:var(--ink)">
+        <div class="stop"><b>Origin pukul 00.00</b><span>Hari ke-1 adalah 1 Januari 2020</span></div>
+        <div class="stop"><b>Lihat data ≤ origin</b><span>Model tidak pernah melihat masa depan beban</span></div>
+        <div class="stop"><b>Ramal 24 jam</b><span>Jam 01.00 sampai 24.00 hari itu</span></div>
+        <div class="stop"><b>Bandingkan dengan aktual</b><span>Galat per jam dicatat</span></div>
+        <div class="stop"><b>Geser 1 hari</b><span>Diulang 178 kali sampai 26 Juni 2020</span></div>
+      </div>
+    </article>
+    <div class="controls" style="margin-top:18px"><div class="ctl"><span class="lab">Model</span><div class="seg" id="flow-model"><button data-v="c2" aria-pressed="true">Chronos-2</button><button data-v="bolt">Chronos-Bolt</button><button data-v="tfm">TimesFM 2.0</button><button data-v="xgb">XGBoost</button></div></div></div>
+    <article class="panel" id="flow-card"></article>
+    <div class="grid g-2" style="margin-top:22px">
+      <article class="panel"><h3>Fitur terpenting XGBoost</h3><p class="sub">Persentase total gain, 15 fitur teratas</p><div class="chart tall"><canvas id="p-imp"></canvas></div></article>
+      <article class="panel"><h3>Ukuran dan waktu komputasi</h3><p class="sub">CPU 6 thread, tanpa GPU. Waktu dihitung untuk 178 ramalan.</p><div class="scroll"><table class="tbl l2" id="tbl-info"></table></div></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ PREDIKSI -->
+<section data-tab="prediksi" aria-labelledby="t-f">
+  <h1 class="h1" id="t-f">Hasil prediksi: telusuri setiap hari uji, uji skenario suhu, dan lihat 24 jam ke depan</h1>
+  <p class="lede">Semua ramalan dihitung di notebook lalu disimpan di sini. Model tidak dijalankan di browser karena bobot Chronos dan TimesFM berukuran 190 MB sampai 2 GB.</p>
+
+  <h2 style="font-size:28px;margin-bottom:8px">Ramalan vs aktual pada hari uji</h2>
+  <div class="controls">
+    <div class="ctl"><label for="f-date">Tanggal</label><div style="display:flex;gap:6px"><button class="btn" id="f-prev" aria-label="Hari sebelumnya"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><polyline points="9,2 4,7 9,12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button><input type="date" id="f-date" min="2020-01-01" max="2020-06-26" value="2020-04-10"><button class="btn" id="f-next" aria-label="Hari berikutnya"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><polyline points="5,2 10,7 5,12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button></div></div>
+    <div class="ctl"><span class="lab">Model yang ditampilkan</span><div id="f-models" style="display:flex;gap:16px;flex-wrap:wrap"></div></div>
+    <div class="ctl"><label for="f-band">Interval 80%</label><select id="f-band"></select></div>
+    <label class="chk"><input type="checkbox" class="kov" checked>Chronos-2 memakai kovariat</label>
+  </div>
+  <div class="grid g-21">
+    <article class="panel"><h3 id="f-title"></h3><p class="sub" id="f-sub"></p><div class="chart tall"><canvas id="f-chart"></canvas></div></article>
+    <article class="panel"><h3>Galat hari ini</h3><p class="sub">Dihitung dari 24 jam pada tanggal terpilih</p><table class="tbl" id="tbl-day"></table><p class="note" id="f-note"></p></article>
+  </div>
+
+  <div class="block">
+    <h2>Simulasi: bagaimana jika suhu lebih panas atau lebih dingin?</h2>
+    <p>Geser slider untuk menaikkan atau menurunkan suhu di satu kota (atau ketiganya) sepanjang 24 jam yang diramal. Kovariat lain tetap. Ramalan dihitung ulang di notebook untuk 12 hari contoh dan 27 Juni 2020.</p>
+    <div class="controls">
+      <div class="ctl"><label for="s-day">Hari</label><select id="s-day"></select></div>
+      <div class="ctl"><span class="lab">Model</span><div class="seg" id="s-model"><button data-v="c2" aria-pressed="true">Chronos-2 + kovariat</button><button data-v="xgb">XGBoost</button></div></div>
+      <div class="ctl"><span class="lab">Suhu diubah di</span><div class="seg" id="s-city"><button data-v="Tocumen" aria-pressed="true">Tocumen</button><button data-v="Santiago">Santiago</button><button data-v="David">David</button><button data-v="Semua kota">Ketiga kota</button></div></div>
+      <div class="ctl"><label for="s-off">Perubahan suhu: <output class="readout" id="s-off-out" for="s-off">+2 °C</output></label><input type="range" id="s-off" min="-3" max="3" step="1" value="2"></div>
+    </div>
+    <div class="grid g-21">
+      <article class="panel"><h3 id="s-title"></h3><p class="sub" id="s-sub"></p><div class="chart tall"><canvas id="s-chart"></canvas></div></article>
+      <article class="panel"><h3>Dampak skenario</h3><p class="sub">Dibandingkan ramalan dengan suhu asli</p><div class="delta" id="s-delta"></div><p class="note" id="s-note"></p></article>
+    </div>
+    <article class="panel" style="margin-top:22px"><h3>Sensitivitas rata-rata: perubahan ramalan per kenaikan suhu</h3><p class="sub">MWh per jam, rata-rata seluruh horizon</p><div class="scroll"><table class="tbl" id="tbl-sens"></table></div></article>
+  </div>
+
+  <div class="block">
     <h2>Ramalan 24 jam setelah akhir data</h2>
-    <p class="lead">Chronos-2 univariat yang dimuat dari folder lokal meramal 27 Juni 2020 pukul 01.00 sampai 28 Juni 2020 pukul 00.00. Nilai cuaca masa depan tidak tersedia, sehingga varian berkovariat tidak dipakai di sini.</p>
-    <div class="panel">
-      <div class="chart"><canvas id="c-future"></canvas></div>
+    <p>Data berakhir 27 Juni 2020 pukul 00.00. Tabel dan grafik menunjukkan ramalan keempat model untuk 24 jam berikutnya.</p>
+    <div class="controls">
+      <div class="ctl"><label for="u-band">Interval 80%</label><select id="u-band"></select></div>
+      <label class="chk"><input type="checkbox" class="kov" checked>Chronos-2 memakai kovariat</label>
     </div>
-  </section>
+    <div class="grid g-21">
+      <article class="panel"><h3>Tujuh hari terakhir dan 24 jam ke depan</h3><p class="sub">Garis hitam adalah beban aktual. Garis berwarna adalah ramalan.</p><div class="chart tall"><canvas id="u-chart"></canvas></div></article>
+      <article class="panel"><h3>Asumsi ramalan ini</h3><ul class="note" style="padding-left:18px;display:grid;gap:6px">
+        <li>Cuaca 27 Juni 2020 tidak ada dalam dataset, jadi suhu dan kelembapan diasumsikan sama dengan 24 jam terakhir (persistensi). Asumsi ini memengaruhi Chronos-2 + kovariat dan XGBoost.</li>
+        <li>27 Juni 2020 jatuh pada hari Sabtu dan diasumsikan bukan hari libur nasional. Indikator sekolah mengikuti nilai terakhir.</li>
+        <li>Chronos-Bolt, TimesFM 2.0, dan Chronos-2 tanpa kovariat hanya membaca riwayat beban.</li></ul>
+</article>
+      <article class="panel span-all"><h3>Nilai ramalan per jam (MWh)</h3><p class="sub">27 Juni 2020 pukul 01.00 sampai 28 Juni 2020 pukul 00.00</p><div class="scroll" style="max-height:340px"><table class="tbl" id="tbl-future"></table></div></article>
+    </div>
+  </div>
 
-  <section id="metodologi">
-    <h2>Metodologi dan keterbatasan</h2>
-    <div class="grid">
-      <div class="panel s6">
-        <h3>Desain evaluasi</h3>
-        <p id="meth-design"></p>
-        <p>Ukuran akurasi: MAE, RMSE, MAPE, MASE (skala seasonal naive 168 jam pada data latih), WQL rata-rata kuantil 0,1 sampai 0,9, dan cakupan interval 80%.</p>
-      </div>
-      <div class="panel s6">
-        <h3>Keterbatasan</h3>
-        <p>Kovariat cuaca memakai nilai observasi, bukan ramalan cuaca, sehingga akurasi model berkovariat adalah batas atas. Foundation model tidak di-fine-tune. Hiperparameter XGBoost dan orde ARIMA tidak dicari secara grid. Evaluasi mencakup satu semester (Januari s.d. Juni 2020).</p>
-      </div>
-    </div>
-  </section>
+</section>
+  <footer>
+    <div><b>Sumber data:</b> Aguilar Madrid, E., &amp; Antonio, N. (2021). Short-term electricity load forecasting with machine learning. <i>Information, 12</i>(2), 50. https://doi.org/10.3390/info12020050</div>
+    <div><b>Analisis:</b> <code>Analisis_Forecasting_Beban_Listrik_Panama.ipynb</code>, dengan penjelasan rinci di <code>LAPORAN_ANALISIS.md</code>.</div>
+    <div><b>Batasan:</b> pada backtest, kovariat cuaca memakai nilai observasi, bukan ramalan cuaca, sehingga akurasi Chronos-2 + kovariat adalah batas atas. Model tidak dilatih ulang selama periode uji.</div>
+  </footer>
 </main>
-
-<footer class="wrap ref">
-  Data: Aguilar Madrid, E., &amp; Antonio, N. (2021). Short-term electricity load forecasting with machine learning. <em>Information, 12</em>(2), 50. <a href="https://doi.org/10.3390/info12020050">doi.org/10.3390/info12020050</a>. Analisis lengkap ada di notebook dan LAPORAN_ANALISIS.md.
-</footer>
+<div id="tip" role="tooltip"></div>
 
 <script src="data.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script>
-const D = window.DATA, M = D.meta.models;
-const DARK_SERIES = {'Chronos-2+Kov': '#3987e5', 'Chronos-2': '#d95926', 'Chronos-Bolt': '#199e70', 'TimesFM-2.0': '#c98500', 'XGBoost': '#d55181', 'SARIMAX-W': '#0ca30c', 'SARIMAX-DHR': '#9085e9', 'SNaive-168': '#8f8e88'};
-const root = document.documentElement;
-const isDark = () => root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-const col = m => (isDark() ? DARK_SERIES : D.meta.colors)[m];
-const tok = v => getComputedStyle(root).getPropertyValue(v).trim();
-const fmt = (x, d = 2) => x == null || Number.isNaN(x) ? '-' : Number(x).toLocaleString('id-ID', {minimumFractionDigits: d, maximumFractionDigits: d});
-const rows = s => s.data.map((r, i) => Object.fromEntries([['_i', s.index[i]], ...s.columns.map((c, j) => [c, r[j]])]));
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const alpha = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
-const charts = {};
-
-const overall = rows(D.overall), byReg = rows(D.by_regime), dm = rows(D.dm), info = rows(D.info);
-const best = D.meta.best;
-const metricRow = (m, reg) => reg === 'Semua' ? overall.find(r => r._i === m) : byReg.find(r => r.model === m && r.regime === reg);
-
-/* Ringkasan: angka dihitung langsung dari hasil notebook */
-function renderSummary() {
-  const b = metricRow(best, 'Semua'), bn = metricRow(best, 'Normal'), bc = metricRow(best, 'COVID-19');
-  const sn = metricRow('SNaive-168', 'Semua');
-  const fmBest = overall.filter(r => ['Chronos-2', 'Chronos-Bolt', 'TimesFM-2.0'].includes(r._i)).sort((a, c) => a.MAE - c.MAE)[0];
-  const stat = overall.filter(r => ['XGBoost', 'SARIMAX-W', 'SARIMAX-DHR'].includes(r._i)).sort((a, c) => a.MAE - c.MAE)[0];
-  const sig = dm.filter(r => r['Model A'] === best && r.Regime === 'Semua');
-  const nSig = sig.filter(r => r['p-value'] < 0.05 && r.DM < 0).length;
-  document.getElementById('subtitle').textContent = `${D.meta.n_obs.toLocaleString('id-ID')} observasi per jam (${D.meta.start.slice(0, 10)} s.d. ${D.meta.end.slice(0, 10)}), ${D.meta.n_origin} origin backtest harian, horizon ${D.meta.H} jam.`;
-  document.getElementById('lead-ringkasan').textContent = `Model terbaik menurut MAE keseluruhan adalah ${best}. Angka di bawah dihitung dari ${D.meta.n_origin * D.meta.H} pasangan ramalan dan aktual per model.`;
-  const tiles = [
-    [fmt(b['MAPE (%)']) + '%', `MAPE ${best}`, `MAE ${fmt(b.MAE, 1)} MWh, MASE ${fmt(b.MASE, 3)}`],
-    [fmt(b['Skill vs SNaive (%)'], 1) + '%', 'Penurunan MAE terhadap seasonal naive', `SNaive-168: MAPE ${fmt(sn['MAPE (%)'])}%`],
-    [fmt(fmBest['MAPE (%)']) + '%', `MAPE foundation model univariat terbaik (${fmBest._i})`, `Pembanding domain terbaik: ${stat._i}, MAPE ${fmt(stat['MAPE (%)'])}%`],
-    [`${fmt(bn['MAPE (%)'])}% → ${fmt(bc['MAPE (%)'])}%`, `MAPE ${best}: Normal vs COVID-19`, `${nSig} dari ${sig.length} pembanding kalah signifikan (uji DM, alpha 5%)`]
-  ];
-  document.getElementById('kpis').innerHTML = tiles.map(([v, l, t]) => `<div class="panel kpi s3"><div class="v">${v}</div><div class="l">${l}</div><div class="t">${t}</div></div>`).join('');
-}
-
-function baseOpts(extra = {}) {
-  const ink2 = tok('--ink-2'), line = tok('--line');
-  return Object.assign({
-    responsive: true, maintainAspectRatio: false, animation: reduce ? false : {duration: 300},
-    interaction: {mode: 'index', intersect: false},
-    plugins: {legend: {labels: {color: ink2, boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: {family: 'IBM Plex Sans', size: 12}}},
-              tooltip: {backgroundColor: tok('--surface'), titleColor: tok('--ink'), bodyColor: tok('--ink'), borderColor: line, borderWidth: 1, padding: 10, boxPadding: 4,
-                        titleFont: {family: 'IBM Plex Sans', weight: '600'}, bodyFont: {family: 'IBM Plex Mono', size: 12},
-                        callbacks: {label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y ?? c.parsed.x, 1)}`}}},
-    scales: {x: {grid: {display: false}, border: {color: line}, ticks: {color: ink2, maxRotation: 0, autoSkipPadding: 18, font: {family: 'IBM Plex Sans', size: 11.5}}},
-             y: {grid: {color: line, lineWidth: 0.7}, border: {display: false}, ticks: {color: ink2, font: {family: 'IBM Plex Mono', size: 11}}}}
-  }, extra);
-}
-const vline = (getIdx, getX) => ({id: 'vline', afterDatasetsDraw(ch) {
-  const i = getIdx(ch); if (i == null || i < 0) return;
-  const x = ch.scales.x.getPixelForValue(i), {top, bottom} = ch.chartArea, c = ch.ctx;
-  c.save(); c.strokeStyle = tok('--ink'); c.lineWidth = 1; c.beginPath(); c.moveTo(x, top); c.lineTo(x, bottom); c.stroke(); c.restore();
-}});
-const shade = getIdx => ({id: 'shade', beforeDatasetsDraw(ch) {
-  const i = getIdx(ch); if (i < 0) return;
-  const x = ch.scales.x.getPixelForValue(i), {top, bottom, right} = ch.chartArea, c = ch.ctx;
-  c.save(); c.fillStyle = tok('--neutral-soft'); c.fillRect(x, top, right - x, bottom - top); c.restore();
-}});
-function make(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart(document.getElementById(id), cfg); return charts[id]; }
-
-function renderData() {
-  const dts = D.daily.dates;
-  const covI = dts.indexOf(D.meta.covid_start), testI = dts.indexOf('2020-01-01');
-  make('c-daily', {type: 'line', data: {labels: dts, datasets: [{label: 'Beban harian', data: D.daily.values, borderColor: tok('--accent'), borderWidth: 1.2, pointRadius: 0, pointHitRadius: 6}]},
-    options: baseOpts({plugins: {...baseOpts().plugins, legend: {display: false}}, scales: {...baseOpts().scales, x: {...baseOpts().scales.x, ticks: {...baseOpts().scales.x.ticks, maxTicksLimit: 8}}}}),
-    plugins: [shade(() => testI), vline(() => covI)]});
-  const hp = D.holiday_profile;
-  make('c-holiday', {type: 'line', data: {labels: hp.hour.map(h => String(h).padStart(2, '0')), datasets: [
-      {label: 'Hari biasa', data: hp.biasa, borderColor: col('Chronos-2+Kov'), borderWidth: 2, pointRadius: 0},
-      {label: 'Hari libur nasional', data: hp.libur, borderColor: col('Chronos-2'), borderWidth: 2, pointRadius: 0}]},
-    options: baseOpts({scales: {...baseOpts().scales, x: {...baseOpts().scales.x, title: {display: true, text: 'Jam', color: tok('--ink-2')}}}})});
-  const gap = hp.biasa.map((v, i) => v - hp.libur[i]), mx = Math.max(...gap), hmx = gap.indexOf(mx);
-  document.getElementById('note-holiday').textContent = `Selisih terbesar ${fmt(mx, 0)} MWh pada jam ${String(hp.hour[hmx]).padStart(2, '0')}. Pada dini hari kedua profil hampir berimpit, sehingga efek libur terkonsentrasi pada jam kerja.`;
-
-  const z = D.profile.z, flat = z.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
-  const ramp = isDark() ? ['#1b2b40', '#3987e5', '#cde2fb'] : ['#eaf2fd', '#5598e7', '#0d366b'];
-  const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
-  const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-  const colorAt = v => { const t = (v - lo) / (hi - lo); const [a, b, u] = t < 0.5 ? [ramp[0], ramp[1], t * 2] : [ramp[1], ramp[2], (t - 0.5) * 2]; return `rgb(${lerp(hex2(a), hex2(b), u).join(',')})`; };
-  let h = '<div class="colh"></div>' + D.profile.cols.map(c => `<div class="colh">${c}</div>`).join('');
-  z.forEach((r, i) => { h += `<div class="lab">${String(D.profile.rows[i]).padStart(2, '0')}</div>` + r.map((v, j) => `<div style="background:${colorAt(v)}" title="${D.profile.cols[j]} jam ${D.profile.rows[i]}: ${fmt(v, 0)} MWh"></div>`).join(''); });
-  document.getElementById('heat').innerHTML = h;
-  document.getElementById('heat-bar').style.background = `linear-gradient(90deg, ${ramp.join(',')})`;
-  document.getElementById('heat-min').textContent = fmt(lo, 0); document.getElementById('heat-max').textContent = fmt(hi, 0);
-
-  const sName = {Tren: 'Tren', seasonal_24: 'Musiman harian (24 jam)', seasonal_168: 'Musiman mingguan (168 jam)'};
-  document.getElementById('t-strength').innerHTML = '<thead><tr><th>Komponen</th><th>Kekuatan</th></tr></thead><tbody>' + Object.entries(D.strength).map(([k, v]) => `<tr><td>${sName[k] || k}</td><td class="num">${fmt(v, 3)}</td></tr>`).join('') + '</tbody>';
-  const cr = rows(D.corr).sort((a, b) => Math.abs(b.r_per_jam) - Math.abs(a.r_per_jam)).slice(0, 7);
-  document.getElementById('t-corr').innerHTML = '<thead><tr><th>Variabel</th><th>r per jam</th><th>r harian</th></tr></thead><tbody>' + cr.map(r => `<tr><td class="mono">${r._i}</td><td class="num">${fmt(r.r_per_jam, 3)}</td><td class="num">${fmt(r.r_harian, 3)}</td></tr>`).join('') + '</tbody>';
-  const yr = rows(D.yearly);
-  document.getElementById('t-year').innerHTML = '<thead><tr><th>Tahun</th><th>Rerata</th><th>Simp. baku</th><th>Tumbuh %</th></tr></thead><tbody>' + yr.map(r => `<tr><td>${r._i}</td><td class="num">${fmt(r.mean, 1)}</td><td class="num">${fmt(r.std, 1)}</td><td class="num">${r['tumbuh_%'] == null ? '-' : fmt(r['tumbuh_%'], 2)}</td></tr>`).join('') + '</tbody>';
-}
-
-function renderModels() {
-  const FM = [
-    ['Chronos-2+Kov', 'Foundation model', 'Chronos-2 dengan kovariat suhu tiga kota, kelembapan, hari libur, dan masa sekolah (masa lalu dan masa depan) melalui group attention.', true],
-    ['Chronos-2', 'Foundation model', 'Amazon, 2025. In-context learning lintas target dan kovariat; di sini dipakai univariat.', true],
-    ['Chronos-Bolt', 'Foundation model', 'Amazon. Varian Chronos berbasis patch yang langsung menghasilkan kuantil multi-langkah.', true],
-    ['TimesFM-2.0', 'Foundation model', 'Google. Decoder-only dengan masukan patch, dilatih pada korpus nyata dan sintetis.', true],
-    ['XGBoost', 'Machine learning', 'Gradient boosting dengan fitur kalender, cuaca, dan lag 24 s.d. 336 jam; dilatih sampai Desember 2019.', true],
-    ['SARIMAX-W', 'Statistik', 'Beda musiman mingguan y(t) - y(t-168) dengan galat ARIMA(2,0,1)(1,0,0)24 dan eksogen yang ikut dibedakan; MLE pada 2019.', true],
-    ['SARIMAX-DHR', 'Statistik', 'Regresi harmonik dinamis: Fourier 24 dan 168 jam, suhu, kalender, galat ARIMA(2,1,1); MLE pada 2019.', true],
-    ['SNaive-168', 'Baseline', 'Menyalin nilai pada jam yang sama minggu sebelumnya.', true],
-    ['Moirai', 'Foundation model', 'Salesforce, 2024. Masked-encoder universal, korpus LOTSA. Pustaka uni2ts mensyaratkan torch < 2.5 sehingga bentrok dengan lingkungan.', false],
-    ['Lag-Llama', 'Foundation model', 'Decoder-only bergaya LLaMA dengan lag sebagai kovariat. Bergantung pada GluonTS versi lama.', false],
-    ['TimeGPT', 'Foundation model', 'Nixtla. Sumber tertutup, diakses melalui API berbayar; data harus dikirim ke layanan eksternal.', false]];
-  const par = Object.fromEntries(info.map(r => [r._i, r]));
-  document.getElementById('t-models').innerHTML = '<thead><tr><th>Model</th><th>Paradigma</th><th style="text-align:left">Ringkasan</th><th>Parameter</th><th>Waktu (detik)</th><th>Status</th></tr></thead><tbody>' +
-    FM.map(([m, p, d, run]) => { const r = par[m] || {}; const pj = r.parameter_juta; const sec = r.detik_inferensi ?? r.detik_latih;
-      return `<tr><td>${run ? `<span class="sw" style="background:${col(m)}"></span>` : '<span class="sw" style="background:transparent;border:1px solid var(--line)"></span>'}${m}</td><td>${p}</td><td class="wrap-cell">${d}</td><td class="num">${pj == null ? '-' : pj === 0 ? String(NPAR[m] ?? 0) : pj < 0.001 ? `${Math.round(pj * 1e6)}` : `${fmt(pj, 1)} juta`}</td><td class="num">${sec == null ? '-' : fmt(sec, 1)}</td><td>${run ? '<span class="chip on">Dijalankan</span>' : '<span class="chip">Konseptual</span>'}</td></tr>`; }).join('') + '</tbody>';
-}
-
-let REG = 'Semua';
-function renderEval() {
-  const rs = M.map(m => ({m, ...metricRow(m, REG)})).sort((a, b) => a.MAE - b.MAE);
-  const snMAE = metricRow('SNaive-168', REG).MAE;
-  document.getElementById('h-leader').textContent = `Papan peringkat, ${REG === 'Semua' ? 'semua origin' : 'regime ' + REG}`;
-  document.getElementById('t-leader').innerHTML = '<thead><tr><th>#</th><th style="text-align:left">Model</th><th>MAE</th><th>RMSE</th><th>MAPE %</th><th>MASE</th><th>WQL</th><th>Cakupan 80%</th><th>Skill %</th></tr></thead><tbody>' +
-    rs.map((r, i) => `<tr class="${i === 0 ? 'best' : ''}"><td>${i + 1}</td><td style="text-align:left"><span class="sw" style="background:${col(r.m)}"></span>${r.m}</td><td class="num">${fmt(r.MAE, 1)}</td><td class="num">${fmt(r.RMSE, 1)}</td><td class="num">${fmt(r['MAPE (%)'])}</td><td class="num">${fmt(r.MASE, 3)}</td><td class="num">${r.WQL == null ? '-' : fmt(r.WQL, 4)}</td><td class="num">${r['Cakupan 80% (%)'] == null ? '-' : fmt(r['Cakupan 80% (%)'], 1)}</td><td class="num">${fmt((1 - r.MAE / snMAE) * 100, 1)}</td></tr>`).join('') + '</tbody>';
-  make('c-mape', {type: 'bar', data: {labels: rs.map(r => r.m), datasets: [{label: 'MAPE (%)', data: rs.map(r => r['MAPE (%)']), backgroundColor: rs.map(r => col(r.m)), borderRadius: 4, barThickness: 16}]},
-    options: baseOpts({indexAxis: 'y', interaction: {mode: 'nearest', intersect: true}, plugins: {...baseOpts().plugins, legend: {display: false}},
-      scales: {x: {...baseOpts().scales.y, beginAtZero: true}, y: {...baseOpts().scales.x, grid: {display: false}}}})});
-}
-function renderHorizon() {
-  make('c-horizon', {type: 'line', data: {labels: Array.from({length: 24}, (_, i) => i + 1), datasets: M.map(m => ({label: m, data: D.horizon[m], borderColor: col(m), backgroundColor: col(m), borderWidth: m === best ? 2.6 : 1.5, pointRadius: 0, pointHoverRadius: 4}))},
-    options: baseOpts({scales: {...baseOpts().scales, x: {...baseOpts().scales.x, title: {display: true, text: 'Jam ke depan', color: tok('--ink-2')}}}})});
-}
-
-const BT = D.backtest; let SEL = new Set([best, 'XGBoost', 'TimesFM-2.0']);
-function setupBacktest() {
-  const r = document.getElementById('origin'); r.max = BT.origins.length - 1;
-  const start = BT.origins.indexOf('2020-04-06'); r.value = start >= 0 ? start : 0;
-  renderToggles();
-  document.getElementById('band-model').innerHTML = Object.keys(BT.band).map(m => `<option ${m === best ? 'selected' : ''}>${m}</option>`).join('');
-  r.addEventListener('input', renderBacktest);
-  document.getElementById('prev').onclick = () => { r.value = Math.max(0, +r.value - 1); renderBacktest(); };
-  document.getElementById('next').onclick = () => { r.value = Math.min(+r.max, +r.value + 1); renderBacktest(); };
-  document.getElementById('model-toggles').addEventListener('change', e => { const m = e.target.dataset.m; e.target.checked ? SEL.add(m) : SEL.delete(m); renderBacktest(); renderDailyErr(); });
-  document.getElementById('band-model').addEventListener('change', renderBacktest);
-}
-function renderToggles() {
-  document.getElementById('model-toggles').innerHTML = M.map((m, i) => `<label for="tg-${i}"><input type="checkbox" id="tg-${i}" data-m="${m}" ${SEL.has(m) ? 'checked' : ''}><span class="sw" style="background:${col(m)};margin-right:0"></span>${m}</label>`).join('');
-}
-function renderBacktest() {
-  const i = +document.getElementById('origin').value, bm = document.getElementById('band-model').value;
-  document.getElementById('origin-label').textContent = BT.origins[i];
-  const rg = document.getElementById('origin-reg'); rg.textContent = BT.regime[i]; rg.className = 'chip ' + (BT.regime[i] === 'Normal' ? 'acc' : '');
-  const labels = Array.from({length: 24}, (_, h) => String((h + 1) % 24).padStart(2, '0') + '.00');
-  const ds = [];
-  if (BT.band[bm]) {
-    ds.push({label: `${bm} kuantil 0,1`, data: BT.band[bm].lo[i], borderWidth: 0, pointRadius: 0, fill: false});
-    ds.push({label: `${bm} kuantil 0,9`, data: BT.band[bm].hi[i], borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: alpha(col(bm), 0.16)});
-  }
-  ds.push({label: 'Aktual', data: BT.actual[i], borderColor: tok('--ink'), backgroundColor: tok('--ink'), borderWidth: 2.2, pointRadius: 0});
-  M.filter(m => SEL.has(m)).forEach(m => ds.push({label: m, data: BT.mean[m][i], borderColor: col(m), backgroundColor: col(m), borderWidth: 1.6, pointRadius: 0}));
-  make('c-bt', {type: 'line', data: {labels, datasets: ds}, options: baseOpts({plugins: {...baseOpts().plugins, legend: {...baseOpts().plugins.legend, labels: {...baseOpts().plugins.legend.labels, filter: it => !it.text.includes('kuantil')}}}})});
-  const mae = M.map(m => [m, BT.mean[m][i].reduce((s, v, h) => s + Math.abs(v - BT.actual[i][h]), 0) / 24]).sort((a, b) => a[1] - b[1]);
-  document.getElementById('t-day').innerHTML = '<thead><tr><th>Model</th><th>MAE</th></tr></thead><tbody>' + mae.map(([m, v], k) => `<tr class="${k === 0 ? 'best' : ''}"><td><span class="sw" style="background:${col(m)}"></span>${m}</td><td class="num">${fmt(v, 1)}</td></tr>`).join('') + '</tbody>';
-}
-function renderDailyErr() {
-  const covI = BT.origins.indexOf(D.meta.covid_start);
-  const ds = M.filter(m => SEL.has(m)).map(m => ({label: m, data: BT.mean[m].map((row, i) => row.reduce((s, v, h) => s + Math.abs(v - BT.actual[i][h]), 0) / 24), borderColor: col(m), backgroundColor: col(m), borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4}));
-  make('c-daily-err', {type: 'line', data: {labels: BT.origins, datasets: ds}, options: baseOpts({scales: {...baseOpts().scales, x: {...baseOpts().scales.x, ticks: {...baseOpts().scales.x.ticks, maxTicksLimit: 8}}}}), plugins: [vline(() => covI)]});
-}
-
-function renderDM() {
-  const s = dm.filter(r => r.Regime === 'Semua'), win = s.filter(r => r['p-value'] < 0.05 && r.DM < 0).map(r => r['Model B']);
-  document.getElementById('lead-dm').textContent = `${best} dibandingkan dengan setiap model lain pada tiga cakupan origin. Pada seluruh origin, ${best} lebih akurat secara signifikan daripada ${win.length ? win.join(', ') : 'tidak satu pun model'}.`;
-  const chip = k => k === 'Tidak berbeda signifikan' ? `<span class="chip">${k}</span>` : `<span class="chip ${k === 'A lebih akurat' ? 'on' : 'acc'}">${k}</span>`;
-  document.getElementById('t-dm').innerHTML = '<thead><tr><th>Model A</th><th>Model B</th><th>Cakupan</th><th>Selisih MAE (A - B)</th><th>DM</th><th>p-value</th><th>Kesimpulan</th></tr></thead><tbody>' +
-    dm.map(r => `<tr><td>${r['Model A']}</td><td>${r['Model B']}</td><td>${r.Regime}</td><td class="num">${fmt(r['Selisih MAE (A-B)'], 2)}</td><td class="num">${fmt(r.DM, 2)}</td><td class="num">${r['p-value'] < 0.0001 ? '< 0,0001' : fmt(r['p-value'], 4)}</td><td>${chip(r['Kesimpulan (alpha 5%)'])}</td></tr>`).join('') + '</tbody>';
-}
-
-function renderFuture() {
-  const F = D.future, n = F.hist.length, labels = [...F.hist_ts, ...F.ts].map(t => t.slice(5, 13).replace(' ', ' ') + '.00');
-  const pad = a => [...Array(n).fill(null), ...a];
-  make('c-future', {type: 'line', data: {labels, datasets: [
-      {label: 'Kuantil 0,1', data: pad(F.lo), borderWidth: 0, pointRadius: 0},
-      {label: 'Kuantil 0,9', data: pad(F.hi), borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: alpha(col('Chronos-2'), 0.18)},
-      {label: 'Aktual 7 hari terakhir', data: [...F.hist, ...Array(F.ts.length).fill(null)], borderColor: tok('--ink'), backgroundColor: tok('--ink'), borderWidth: 1.6, pointRadius: 0},
-      {label: 'Median Chronos-2', data: pad(F.mid), borderColor: col('Chronos-2'), backgroundColor: col('Chronos-2'), borderWidth: 2, pointRadius: 0}]},
-    options: baseOpts({plugins: {...baseOpts().plugins, legend: {...baseOpts().plugins.legend, labels: {...baseOpts().plugins.legend.labels, filter: it => !it.text.startsWith('Kuantil')}}},
-      scales: {...baseOpts().scales, x: {...baseOpts().scales.x, ticks: {...baseOpts().scales.x.ticks, maxTicksLimit: 9}}}})});
-}
-
-function renderText() {
-  const b = metricRow(best, 'Semua');
-  document.getElementById('lead-data').textContent = `Beban memiliki musiman harian dan mingguan yang sangat kuat, tren naik sampai 2019, serta penurunan tajam sejak pertengahan Maret 2020.`;
-  document.getElementById('lead-eval').textContent = `Diurutkan menurut MAE. ${best} unggul dengan MAPE ${fmt(b['MAPE (%)'])}%. Pilih regime untuk melihat perubahan peringkat saat terjadi perubahan struktural.`;
-  document.getElementById('meth-design').textContent = `Rolling-origin backtest: setiap hari pukul 00.00 dari 1 Januari s.d. 26 Juni 2020 (${D.meta.n_origin} origin), setiap model meramal 24 jam ke depan hanya dengan informasi sampai origin. Foundation model menerima konteks ${D.meta.CTX} jam. SARIMAX-W, SARIMAX-DHR, dan XGBoost dilatih dengan data sebelum 2020 dan tidak dilatih ulang. Regime COVID-19 dimulai ${D.meta.covid_start}.`;
-}
-
-const NPAR = {'SARIMAX-W': 10, 'SARIMAX-DHR': 29};
-function renderAll() { renderSummary(); renderText(); renderData(); renderModels(); renderEval(); renderHorizon(); renderBacktest(); renderDailyErr(); renderDM(); renderFuture(); }
-
-document.querySelectorAll('#seg-regime button').forEach(bt => bt.addEventListener('click', () => {
-  REG = bt.dataset.reg; document.querySelectorAll('#seg-regime button').forEach(x => x.setAttribute('aria-pressed', x === bt)); renderEval();
-}));
-document.querySelectorAll('[data-theme-set]').forEach(bt => bt.addEventListener('click', () => {
-  const v = bt.dataset.themeSet; v === 'auto' ? delete root.dataset.theme : root.dataset.theme = v;
-  document.querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x === bt));
-  try { localStorage.setItem('beban-theme', v); } catch (e) {}
-  renderToggles(); renderAll();
-}));
-try { const t = localStorage.getItem('beban-theme'); if (t && t !== 'auto') { root.dataset.theme = t; document.querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x.dataset.themeSet === t)); } } catch (e) {}
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!root.dataset.theme) { renderToggles(); renderAll(); } });
-Chart.defaults.locale = 'id-ID';
-setupBacktest(); document.fonts.ready.then(renderAll);
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

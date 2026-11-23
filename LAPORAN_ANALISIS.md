@@ -1,12 +1,22 @@
-# Peramalan Beban Listrik Per Jam Panama: Perbandingan *Foundation Model* Deret Waktu dengan Model Statistik dan *Machine Learning*
+# Peramalan Beban Listrik Per Jam Panama dengan Chronos-2, Chronos-Bolt, TimesFM 2.0, dan XGBoost
 
-**Abstrak.** Penjadwalan pembangkit listrik bergantung pada ramalan beban per jam, sedangkan *foundation model* deret waktu menawarkan peramalan tanpa estimasi parameter pada data lokal. Penelitian ini membandingkan empat konfigurasi *foundation model* yang dijalankan secara *zero-shot* (Chronos-Bolt, Chronos-2 univariat, Chronos-2 dengan kovariat, dan TimesFM 2.0) dengan tiga model statistik (SNaive-168, SARIMAX-W, dan SARIMAX-DHR) serta XGBoost untuk peramalan 24 jam ke depan beban nasional Panama. Evaluasi dilakukan melalui *rolling-origin backtest* dengan 178 origin harian (1 Januari sampai 26 Juni 2020) yang mencakup regime Normal dan regime pembatasan COVID-19. Ukuran yang dipakai adalah MAE, MAPE, MASE, *weighted quantile loss*, dan cakupan interval 80%, disertai uji Diebold-Mariano. Chronos-2 dengan kovariat cuaca dan kalender menghasilkan galat terendah (MAPE 2,79%; MASE 0,564), atau 54% lebih akurat daripada *seasonal naive*. Urutan berikutnya adalah Chronos-2 univariat (2,85%), Chronos-Bolt (3,18%), TimesFM 2.0 (3,22%), XGBoost (4,19%), dan SARIMAX-W (4,44%). Keunggulan Chronos-2 dengan kovariat atas semua model selain Chronos-2 univariat signifikan ($p < 0{,}01$). Manfaat kovariat baru signifikan pada regime COVID-19 ($p = 0{,}033$). Pada regime COVID-19, interval 80% *foundation model* cenderung terlalu sempit (cakupan 69,8% sampai 76,6%). Hasil ini menunjukkan bahwa *foundation model zero-shot* layak dijadikan acuan awal yang kuat untuk peramalan beban jangka pendek, termasuk saat terjadi perubahan struktural, dengan catatan kalibrasi interval perlu diperiksa sebelum dipakai secara operasional.
+**Abstrak.** Penjadwalan pembangkit listrik bergantung pada ramalan beban per jam untuk hari berikutnya. Penelitian ini membandingkan tiga *foundation model* deret waktu yang dijalankan secara *zero-shot*, yaitu Chronos-2, Chronos-Bolt, dan TimesFM 2.0, dengan model *machine learning* XGBoost untuk meramal beban listrik nasional Panama 24 jam ke depan. Chronos-2 diuji dalam dua konfigurasi: tanpa kovariat dan dengan kovariat cuaca serta kalender. Evaluasi memakai *rolling-origin backtest* dengan 178 origin harian (1 Januari sampai 26 Juni 2020) yang mencakup regime Normal dan regime pembatasan COVID-19. Ukuran akurasi yang dipakai adalah MAE, RMSE, MAPE, MASE, *weighted quantile loss* (WQL), dan cakupan interval 80%, disertai uji Diebold-Mariano. Chronos-2 dengan kovariat menghasilkan galat terendah (MAPE 2,79%; MAE 32,9 MWh; MASE 0,564). Urutan berikutnya adalah Chronos-2 tanpa kovariat (2,85%), Chronos-Bolt (3,18%), TimesFM 2.0 (3,22%), dan XGBoost (4,19%). Keunggulan Chronos-2 dengan kovariat atas Chronos-Bolt, TimesFM, dan XGBoost signifikan ($p < 0{,}01$). Manfaat kovariat hanya signifikan pada regime COVID-19 ($p = 0{,}033$). Analisis cuaca tiga kota menunjukkan bahwa korelasi suhu dan beban yang tinggi pada data per jam ($r \approx 0{,}63$ sampai $0{,}65$) sebagian besar berasal dari pola harian bersama. Di dalam jam yang sama, korelasinya hanya $r \approx 0{,}11$ sampai $0{,}13$. Simulasi skenario suhu menunjukkan bahwa kenaikan suhu 1 °C di Tocumen menaikkan ramalan rata-rata sekitar 4,5 MWh per jam pada XGBoost dan 12,0 MWh per jam pada Chronos-2 dengan kovariat.
 
-**Kata kunci:** peramalan beban jangka pendek; *foundation model* deret waktu; Chronos-2; uji Diebold-Mariano; perubahan struktural COVID-19.
+**Kata kunci:** peramalan beban jangka pendek; *foundation model* deret waktu; Chronos-2; XGBoost; uji Diebold-Mariano; COVID-19.
 
-**Struktur notebook.** Subbab 1 berisi pendahuluan dan tinjauan *foundation model*. Subbab 2 memuat analisis eksploratif. Subbab 3 menjelaskan metodologi dan implementasi delapan model. Subbab 4 menyajikan hasil. Subbab 5 menjelaskan penyimpanan model. Subbab 6 berisi pembahasan, dan Subbab 7 berisi kesimpulan serta saran. Setiap sel kode memuat satu baris komentar; penjelasan rinci ditempatkan pada sel *markdown*.
+> **Cara membaca laporan ini.** Notebook `Analisis_Forecasting_Beban_Listrik_Panama.ipynb` disusun bertahap (Tahap 0 sampai 10). Setiap sel *markdown* di notebook hanya berisi satu kalimat, sedangkan penjelasan rinci setiap tahap ada di laporan ini. Angka pada tabel berasal dari folder `outputs/`. Grafik interaktif tersedia di dashboard (`dashboard/index.html`).
 
-> Laporan ini disusun dari sel *markdown* notebook `Analisis_Forecasting_Beban_Listrik_Panama.ipynb`. Angka pada tabel berasal dari folder `outputs/`; grafik tersedia di notebook dan dashboard (`dashboard/index.html`).
+| Tahap di notebook | Isi | Subbab laporan |
+|---|---|---|
+| 0–1 | Persiapan dan memuat data | 2 |
+| 2 | Prapemrosesan | 3 |
+| 3 | Analisis eksploratif beban | 4 |
+| 4 | Analisis cuaca tiga kota | 5 |
+| 5 | Pemodelan | 6 |
+| 6 | Evaluasi | 7 |
+| 7 | Simulasi skenario suhu | 8 |
+| 8 | Ramalan 24 jam ke depan | 9 |
+| 9–10 | Penyimpanan model dan ekspor dashboard | 10 |
 
 ## 1. Pendahuluan
 
@@ -14,34 +24,35 @@
 
 Operator sistem tenaga listrik harus menyeimbangkan pasokan dan permintaan setiap jam. Ramalan beban yang terlalu rendah memaksa pengoperasian pembangkit cadangan berbiaya tinggi, sedangkan ramalan yang terlalu tinggi menimbulkan kapasitas siaga yang tidak terpakai `[RUJUKAN DIPERLUKAN: kuantifikasi biaya kesalahan peramalan beban jangka pendek]`. Karena itu, peramalan beban jangka pendek (*short-term load forecasting*, STLF) menjadi salah satu masalah peramalan deret waktu yang paling banyak dikaji.
 
-Data yang dianalisis adalah beban listrik nasional Panama per jam yang dipublikasikan oleh Aguilar Madrid dan Antonio (2021) beserta dataset pendampingnya di Mendeley Data. Dalam studi tersebut, pusat dispatch nasional Panama (CND) menghasilkan ramalan mingguan dan para penulis mengembangkan model *machine learning* untuk horizon 168 jam. Dataset memuat beban nasional, variabel cuaca dari tiga kota (Tocumen/Kota Panama, Santiago, dan David), serta indikator hari libur dan masa sekolah.
+Data yang dianalisis adalah beban listrik nasional Panama per jam yang dipublikasikan oleh Aguilar Madrid dan Antonio (2021) beserta dataset pendampingnya. Dataset memuat beban nasional, variabel cuaca dari tiga kota (Tocumen di Kota Panama, Santiago, dan David), serta indikator hari libur dan masa sekolah.
 
-Dalam beberapa tahun terakhir muncul kelas model baru, yaitu *foundation model* deret waktu: jaringan *transformer* yang dilatih sekali pada korpus deret waktu lintas domain berukuran sangat besar, lalu dipakai untuk meramal deret baru tanpa pelatihan ulang (*zero-shot*). Contohnya Chronos (Ansari dkk., 2024), Chronos-2 (Ansari dkk., 2025), TimesFM (Das dkk., 2024), Moirai (Woo dkk., 2024), Lag-Llama (Rasul dkk., 2023), dan TimeGPT (Garza dkk., 2023). Bagi analis statistik muncul pertanyaan praktis: apakah model tanpa estimasi parameter pada data lokal ini mampu menyaingi model yang dibangun khusus dengan pengetahuan domain (musiman ganda, cuaca, dan kalender)?
+Dalam beberapa tahun terakhir muncul *foundation model* deret waktu, yaitu jaringan *transformer* yang dilatih sekali pada korpus deret waktu lintas domain berukuran sangat besar, lalu dipakai untuk meramal deret baru tanpa pelatihan ulang (*zero-shot*). Contohnya Chronos (Ansari dkk., 2024), Chronos-2 (Ansari dkk., 2025), dan TimesFM (Das dkk., 2024). Pertanyaan praktisnya: apakah model tanpa estimasi parameter pada data lokal ini mampu menyaingi model *machine learning* yang dilatih khusus pada data Panama dengan fitur kalender, lag, dan cuaca?
 
-Data Panama juga memuat ujian ketangguhan yang alami. Mulai pekan ketiga Maret 2020, pembatasan aktivitas akibat COVID-19 menurunkan rata-rata beban mingguan dari sekitar 1.300 MWh menjadi sekitar 1.020 sampai 1.110 MWh (dihitung dari data ini). Perubahan struktural semacam ini tidak pernah dilihat model selama pelatihan, sehingga periode tersebut menguji kemampuan adaptasi tiap pendekatan.
+Data Panama juga memuat ujian ketangguhan yang alami. Mulai pertengahan Maret 2020, pembatasan aktivitas akibat COVID-19 menurunkan beban rata-rata sekitar 14%. Perubahan struktural ini tidak pernah dilihat model selama pelatihan, sehingga periode tersebut menguji kemampuan adaptasi setiap pendekatan.
 
 ### 1.2 Rumusan masalah
 
-1. Bagaimana karakteristik deret beban listrik Panama, yaitu tren, musiman harian dan mingguan, serta pengaruh cuaca dan kalender?
-2. Seberapa akurat *foundation model* (Chronos-Bolt, Chronos-2, dan TimesFM) secara *zero-shot* dibandingkan model statistik (*seasonal naive*, SARIMAX pada beda musiman mingguan, dan regresi harmonik dinamis) serta model *machine learning* (XGBoost) untuk peramalan 24 jam ke depan?
-3. Apakah penambahan kovariat cuaca dan kalender pada Chronos-2 meningkatkan akurasi?
-4. Bagaimana kinerja setiap model pada periode perubahan struktural COVID-19?
-5. Apakah perbedaan akurasi antarmodel signifikan secara statistik menurut uji Diebold-Mariano?
+1. Bagaimana karakteristik deret beban listrik Panama, yaitu tren, musiman harian dan mingguan, serta pengaruh hari libur?
+2. Bagaimana hubungan cuaca di Tocumen, Santiago, dan David dengan beban listrik nasional?
+3. Seberapa akurat Chronos-2, Chronos-Bolt, dan TimesFM 2.0 secara *zero-shot* dibandingkan XGBoost untuk peramalan 24 jam ke depan?
+4. Apakah penambahan kovariat cuaca dan kalender pada Chronos-2 meningkatkan akurasi, termasuk pada periode COVID-19?
+5. Apakah perbedaan akurasi antarmodel signifikan menurut uji Diebold-Mariano?
+6. Seberapa sensitif ramalan terhadap perubahan suhu di setiap kota?
 
 ### 1.3 Tujuan
 
-Penelitian ini bertujuan (a) mendeskripsikan pola beban listrik Panama, (b) membandingkan akurasi titik dan akurasi probabilistik delapan model peramalan melalui *backtest* bergulir, (c) mengukur kontribusi kovariat pada *foundation model*, dan (d) menguji signifikansi perbedaan akurasi.
+Penelitian ini bertujuan (a) mendeskripsikan pola beban listrik Panama dan hubungannya dengan cuaca tiga kota, (b) membandingkan akurasi titik dan akurasi probabilistik empat model melalui *backtest* bergulir, (c) mengukur kontribusi kovariat pada Chronos-2, (d) menguji signifikansi perbedaan akurasi, dan (e) menyimulasikan respons ramalan terhadap skenario suhu.
 
 ### 1.4 Batasan
 
-- Horizon peramalan 24 jam (*day-ahead*) dengan titik asal (*origin*) setiap pukul 00.00, sebanyak 178 origin dari 1 Januari sampai 26 Juni 2020.
-- Kovariat cuaca memakai nilai observasi, bukan ramalan cuaca. Akurasi model yang memakai cuaca (SARIMAX-W, SARIMAX-DHR, XGBoost, Chronos-2+Kov) karenanya merupakan batas atas (*oracle*); dalam operasi nyata, galat ramalan cuaca akan menambah galat beban.
-- *Foundation model* dijalankan *zero-shot* di CPU tanpa *fine-tuning*.
-- Moirai, Lag-Llama, dan TimeGPT tidak dijalankan karena alasan teknis yang dijelaskan pada Subbab 1.5; ketiganya dibahas secara konseptual.
+- Horizon peramalan 24 jam (*day-ahead*) dengan origin setiap pukul 00.00, sebanyak 178 origin dari 1 Januari sampai 26 Juni 2020.
+- Kovariat cuaca memakai nilai observasi, bukan ramalan cuaca. Akurasi model yang memakai cuaca (Chronos-2 dengan kovariat dan XGBoost) karenanya merupakan batas atas (*oracle*).
+- *Foundation model* dijalankan *zero-shot* di CPU tanpa *fine-tuning*. XGBoost dilatih sekali pada data sebelum 2020 dan tidak dilatih ulang selama periode uji.
+- Empat model dipilih dari analisis sebelumnya. SARIMAX, regresi harmonik dinamis, dan *seasonal naive* tidak lagi dibahas sebagai model. Galat *seasonal naive* hanya dipakai sebagai penyebut MASE.
 
-### 1.5 *Foundation model* deret waktu: konsep dan posisinya
+### 1.5 *Foundation model* deret waktu
 
-**Konsep.** *Foundation model* deret waktu adalah model berparameter besar yang dilatih satu kali pada kumpulan deret dari banyak domain (energi, lalu lintas, ekonomi, cuaca, data sintetis), kemudian dipakai langsung pada deret baru. Dari sudut pandang statistika, model ini memperkirakan distribusi prediktif bersyarat
+**Konsep.** *Foundation model* deret waktu adalah model berparameter besar yang dilatih satu kali pada kumpulan deret dari banyak domain, kemudian dipakai langsung pada deret baru. Dari sudut pandang statistika, model ini memperkirakan distribusi prediktif bersyarat
 
 $$p\left(y_{T+1:T+H} \mid y_{T-C+1:T},\; \mathbf{x}\right)$$
 
@@ -49,106 +60,169 @@ secara langsung. Jendela konteks sepanjang $C$ titik berperan sebagai data pengk
 
 **Perbandingan paradigma.**
 
-| Aspek | Statistik klasik (ARIMA, ETS, DHR) | *Machine learning* (XGBoost) | *Foundation model* |
-|---|---|---|---|
-| Cakupan model | Satu model per deret | Satu model per dataset | Satu model untuk semua deret |
-| Estimasi | MLE pada deret itu sendiri | Pelatihan pada data lokal | Tidak ada; hanya inferensi |
-| Asumsi | Struktur eksplisit (stasioneritas, orde ARIMA) | Rekayasa fitur oleh analis | Implisit, dipelajari dari korpus |
-| Ketidakpastian | Analitik (asumsi Gaussian) | Perlu metode tambahan | Kuantil atau sampel langsung |
-| Interpretabilitas | Tinggi (koefisien, uji) | Sedang (kepentingan fitur) | Rendah |
+| Aspek | *Machine learning* (XGBoost) | *Foundation model* (Chronos-2, Chronos-Bolt, TimesFM) |
+|---|---|---|
+| Cakupan model | Satu model per dataset | Satu model untuk semua deret |
+| Estimasi | Pelatihan pada data lokal | Tidak ada; hanya inferensi |
+| Asumsi | Rekayasa fitur oleh analis | Implisit, dipelajari dari korpus |
+| Ketidakpastian | Perlu metode tambahan | Kuantil langsung |
+| Adaptasi pada data baru | Perlu pelatihan ulang | Otomatis melalui konteks terbaru |
+| Interpretabilitas | Sedang (kepentingan fitur) | Rendah |
 
-**Model yang dikaji.**
+**Model yang dipakai.**
 
-| Model | Pengembang | Arsitektur dan gagasan kunci | Keluaran | Kovariat | Status dalam analisis ini |
-|---|---|---|---|---|---|
-| Chronos (Ansari dkk., 2024) | Amazon | *Encoder-decoder* keluarga T5; nilai deret diskalakan dan dikuantisasi menjadi token, lalu dilatih seperti model bahasa | Probabilistik (sampel) | Tidak | Diwakili Chronos-Bolt |
-| Chronos-Bolt | Amazon | Varian Chronos berbasis *patch* yang langsung menghasilkan kuantil untuk banyak langkah sekaligus (kartu model `amazon/chronos-bolt-small`) | Kuantil 0,1 sampai 0,9 | Tidak | Dijalankan (ukuran *small*) |
-| Chronos-2 (Ansari dkk., 2025) | Amazon | Mekanisme *group attention* untuk *in-context learning* lintas target dan kovariat; menangani kasus univariat, multivariat, dan berkovariat | Kuantil | Ya, masa lalu dan masa depan | Dijalankan, tanpa dan dengan kovariat |
-| TimesFM (Das dkk., 2024) | Google | *Decoder-only* dengan masukan berupa *patch*; dilatih pada korpus nyata dan sintetis berukuran sekitar 100 miliar titik waktu | Rata-rata dan kuantil | Tidak (versi yang dipakai) | Dijalankan (versi 2.0, 500 juta parameter) |
-| Moirai (Woo dkk., 2024) | Salesforce | *Masked-encoder transformer* universal, dilatih pada arsip LOTSA berisi lebih dari 27 miliar observasi; menerima jumlah variat sembarang | Probabilistik (distribusi parametrik) | Ya | Tidak dijalankan: pustaka `uni2ts` mensyaratkan `torch<2.5`, `numpy~=1.26`, dan `scipy~=1.11` sehingga merusak lingkungan yang ada |
-| Lag-Llama (Rasul dkk., 2023) | Konsorsium akademik dan industri | *Decoder-only* bergaya LLaMA dengan nilai lag sebagai kovariat; univariat probabilistik | Probabilistik (distribusi parametrik) | Tidak | Tidak dijalankan: bergantung pada GluonTS versi lama dan instalasi dari repositori git |
-| TimeGPT (Garza dkk., 2023) | Nixtla | Model sumber tertutup yang diakses melalui API | Titik dan interval | Ya, melalui API | Tidak dijalankan: memerlukan kunci API berbayar dan pengiriman data ke layanan eksternal |
+| Model | Pengembang | Arsitektur dan gagasan kunci | Keluaran | Kovariat |
+|---|---|---|---|---|
+| Chronos-2 (Ansari dkk., 2025) | Amazon | *Encoder transformer* dengan *group attention* untuk *in-context learning* lintas target dan kovariat | Kuantil | Ya, masa lalu dan masa depan |
+| Chronos-Bolt (*small*) | Amazon | Varian Chronos (Ansari dkk., 2024) berbasis *patch* yang langsung menghasilkan kuantil untuk banyak langkah sekaligus | Kuantil 0,1 sampai 0,9 | Tidak |
+| TimesFM 2.0 (Das dkk., 2024) | Google | *Decoder-only* dengan masukan berupa *patch*, 500 juta parameter | Rata-rata dan kuantil | Tidak (versi yang dipakai) |
+| XGBoost (Chen & Guestrin, 2016) | Komunitas *open source* | *Gradient boosting* pohon keputusan | Satu nilai titik | Ya, sebagai fitur |
 
-Ketiga model yang tidak dijalankan dapat ditambahkan dengan pola kode yang sama (fungsi yang menerima konteks dan mengembalikan matriks kuantil berukuran origin x horizon x 9), di lingkungan Python terpisah untuk Moirai dan Lag-Llama.
+## 2. Persiapan dan data (Tahap 0–1)
 
-## 2. Data dan analisis eksploratif
+**Tahap 0** memuat pustaka (pandas, statsmodels, xgboost, chronos-forecasting, dan transformers), lalu menetapkan horizon $H = 24$ jam, panjang konteks $C = 2.048$ jam, kuantil $\tau \in \{0{,}1, \dots, 0{,}9\}$, awal periode uji (1 Januari 2020), dan awal regime COVID-19 (15 Maret 2020). *Seed* acak ditetapkan agar hasil dapat diulang.
 
-### 2.1 Struktur data
+**Tahap 1** membaca lembar `data` pada berkas Excel dan menetapkan indeks waktu berfrekuensi per jam. Data terdiri atas 48.048 observasi (3 Januari 2015 pukul 01.00 sampai 27 Juni 2020 pukul 00.00) dalam zona waktu Panama (UTC−05.00). Variabel respons adalah `nat_demand`, yaitu beban listrik nasional (MWh). Variabel penjelas terdiri atas:
 
-Data terdiri atas 48.048 observasi per jam (3 Januari 2015 pukul 01.00 sampai 27 Juni 2020 pukul 00.00) dalam zona waktu Panama (UTC-05.00). Variabel respons adalah `nat_demand`, yaitu beban listrik nasional (MWh). Variabel penjelas terdiri atas:
-
-- **Cuaca** di tiga kota (akhiran `_toc` untuk Tocumen/Kota Panama, `_san` untuk Santiago, `_dav` untuk David): suhu 2 m (`T2M`), kelembapan 2 m (`QV2M`), presipitasi cair (`TQL`), dan kecepatan angin 2 m (`W2M`).
+- **Cuaca** di tiga kota (akhiran `_toc` untuk Tocumen, `_san` untuk Santiago, `_dav` untuk David): suhu 2 m (`T2M`), kelembapan 2 m (`QV2M`), presipitasi cair (`TQL`), dan kecepatan angin 2 m (`W2M`).
 - **Kalender**: `holiday` (indikator hari libur nasional), `Holiday_ID` (jenis hari libur), dan `school` (indikator masa sekolah).
 
-Lembar `deskripsi` mencatat bahwa satuan kelembapan, presipitasi, dan angin bersumber dari README dataset; nilai `QV2M` yang berkisar 0,01 sampai 0,02 lebih sesuai dengan kelembapan spesifik (kg/kg) daripada kelembapan relatif (%), sehingga satuan tersebut perlu diverifikasi pada sumber aslinya.
+Lembar `deskripsi` mencatat bahwa satuan kelembapan, presipitasi, dan angin bersumber dari README dataset. Nilai `QV2M` yang berkisar 0,01 sampai 0,02 lebih sesuai dengan kelembapan spesifik (kg/kg) daripada kelembapan relatif (%), sehingga satuan ini perlu diverifikasi pada sumber aslinya.
 
-### 2.2 Kelengkapan data dan tren tahunan
+## 3. Prapemrosesan (Tahap 2)
 
-Data tidak memiliki nilai hilang maupun stempel waktu yang terlewat, sehingga tidak diperlukan imputasi. Rata-rata beban tahunan meningkat dari 1.131,5 MWh (2015) menjadi 1.243,6 MWh (2019) dengan laju pertumbuhan 2,27%, 2,17%, 1,98%, dan 3,14% per tahun. Pertumbuhan yang stabil sekitar 2 sampai 3% per tahun ini menunjukkan tren deterministik yang lemah dibandingkan variasi dalam hari.
+### 3.1 Pemeriksaan kualitas data
 
-Rata-rata 2020 tercatat 5,90% lebih rendah daripada 2019, tetapi angka ini tidak setara dengan laju tahunan lain karena dua alasan. Pertama, data 2020 hanya mencakup Januari sampai Juni. Kedua, periode tersebut memuat pembatasan COVID-19. Perbandingan semester yang setara menunjukkan rata-rata Januari sampai Juni 2020 sebesar 1.170,2 MWh, atau 6,1% di bawah periode yang sama pada 2019 (1.246,8 MWh). Grafik berikut memperlihatkan bahwa penurunan tersebut terkonsentrasi setelah pertengahan Maret 2020.
+Pemeriksaan pertama menghitung nilai hilang, stempel waktu ganda, jam yang terlewat, dan beban tidak positif. Keempatnya bernilai nol, sehingga tidak diperlukan imputasi maupun penyesuaian frekuensi.
 
-### 2.3 Perubahan struktural dan anomali
+### 3.2 Deteksi anomali
 
-**Perubahan struktural COVID-19.** Rata-rata mingguan pada Februari sampai pertengahan Maret 2020 berada di kisaran 1.220 sampai 1.304 MWh. Setelah pekan 15 Maret 2020, rata-rata mingguan turun ke 1.193 MWh, lalu bertahan pada 1.021 sampai 1.112 MWh hingga akhir Juni. Rata-rata beban pada regime Normal (1 Januari sampai 14 Maret 2020) adalah 1.277,3 MWh, sedangkan pada regime COVID-19 (15 Maret sampai 26 Juni 2020) adalah 1.094,1 MWh, atau turun 14,3%. Perubahan ini berupa pergeseran level yang persisten, bukan pencilan sesaat.
+Anomali didefinisikan sebagai simpangan terhadap median bergulir 168 jam yang melebihi 5 kali MAD terskala ($1{,}4826 \times \text{MAD}$), dengan ambang sekitar 1.079 MWh. Kriteria ini hanya menandai dua titik, yaitu 20 Januari 2019 pukul 12.00 (85,2 MWh) dan pukul 13.00 (135,8 MWh). Hari tersebut adalah hari Minggu dan bukan hari libur nasional. Beban pulih bertahap pada pukul 14.00 (263,6 MWh) dan 15.00 (417,4 MWh). Pola penurunan mendadak lalu pemulihan bertahap ini lebih konsisten dengan gangguan pasokan atau kesalahan pencatatan daripada perubahan perilaku konsumen `[RUJUKAN DIPERLUKAN: konfirmasi gangguan sistem 20 Januari 2019 dari operator CND Panama]`.
 
-**Anomali titik.** Anomali didefinisikan sebagai simpangan terhadap median bergulir 168 jam yang melebihi 5 kali MAD terskala ($1{,}4826 \times \text{MAD}$). Kriteria ini hanya menandai dua titik, yaitu 20 Januari 2019 pukul 12.00 (85,2 MWh) dan pukul 13.00 (135,8 MWh). Hari tersebut adalah hari Minggu dan bukan hari libur nasional. Beban pulih bertahap pada pukul 14.00 (263,6 MWh) dan 15.00 (417,4 MWh). Pola penurunan mendadak lalu pemulihan bertahap dalam beberapa jam lebih konsisten dengan gangguan pasokan atau kesalahan pencatatan daripada perubahan perilaku konsumen `[RUJUKAN DIPERLUKAN: konfirmasi gangguan sistem 20 Januari 2019 dari laporan operator CND Panama]`. Nilai rendah lain yang tidak melewati ambang adalah 27 Juni 2017 pukul 12.00 (380,6 MWh).
+Anomali tidak dikoreksi karena jumlahnya sangat kecil (kurang dari 0,01% observasi) dan berada di luar periode uji. Median bergulir juga sengaja tidak menandai penurunan COVID-19, karena median beradaptasi terhadap pergeseran level dalam satu minggu. Dengan demikian, gangguan sesaat (anomali titik) dibedakan dari perubahan regime (perubahan struktural).
 
-Anomali tersebut tidak dikoreksi karena jumlahnya sangat kecil (kurang dari 0,01% observasi) dan berada di luar periode uji. Pada model yang diestimasi dengan data 2019 (SARIMAX-DHR dan SARIMAX-W), titik ini dapat sedikit memperbesar estimasi $\sigma^2$. Metode median bergulir sengaja tidak menandai penurunan COVID-19, karena median beradaptasi terhadap pergeseran level dalam satu minggu. Dengan demikian, kedua jenis perubahan dibedakan: anomali titik (gangguan sesaat) dan perubahan struktural (perubahan regime).
+### 3.3 Rekayasa fitur untuk XGBoost
 
-### 2.4 Musiman harian, musiman mingguan, dan efek hari libur
+Fungsi `make_features` menyusun 26 fitur:
 
-Peta panas 2019 memperlihatkan dua pola musiman yang saling bertumpuk:
+- **Kalender**: jam (0–23), hari dalam minggu, bulan, dan hari ke-$n$ dalam tahun.
+- **Lag beban**: $y_{t-24}, y_{t-48}, y_{t-72}, y_{t-168}, y_{t-336}$.
+- **Rata-rata bergulir**: rata-rata 24 jam dan 168 jam dari deret yang sudah digeser 24 jam.
+- **Cuaca**: 12 variabel cuaca tiga kota pada jam yang diramal.
+- **Kalender khusus**: `Holiday_ID`, `holiday`, dan `school`.
 
-- **Musiman harian.** Pada hari kerja, beban terendah terjadi sekitar pukul 04.00 dan puncaknya sekitar pukul 13.00. Nilai tertinggi rata-rata jam x hari adalah 1.531,5 MWh (Kamis pukul 13.00), sedangkan nilai terendahnya 949,2 MWh (Minggu pukul 06.00). Rasio puncak terhadap lembah sebesar 1,61 berarti beban siang hari sekitar 61% lebih tinggi daripada dini hari. Puncak siang hari, bukan malam hari, merupakan ciri sistem tropis dengan beban pendingin ruangan dan aktivitas komersial yang dominan `[RUJUKAN DIPERLUKAN: karakteristik kurva beban harian negara tropis]`.
-- **Musiman mingguan.** Rata-rata Senin sampai Jumat relatif setara (1.271,5 sampai 1.281,6 MWh). Rata-rata turun menjadi 1.205,6 MWh pada Sabtu (sekitar 5,5% lebih rendah) dan 1.118,0 MWh pada Minggu (sekitar 12,3% lebih rendah).
+Semua lag minimal 24 jam. Untuk origin pukul 00.00 dan horizon $h \le 24$, nilai $y_{t-24}$ selalu sudah diketahui pada saat origin, sehingga satu model sah dipakai untuk seluruh horizon tanpa kebocoran informasi. Baris lengkap (tanpa nilai hilang akibat lag) berjumlah 47.712. Fungsi yang sama dipakai lagi pada Tahap 8 untuk menyusun fitur masa depan.
 
-**Efek hari libur.** Pada hari kerja, rata-rata beban harian saat libur nasional adalah 1.069,3 MWh, sedangkan pada hari biasa 1.226,0 MWh. Selisih sekitar 157 MWh (12,8%) signifikan menurut uji *t* Welch ($t = -16{,}11$; $p = 3{,}99 \times 10^{-28}$). Profil harian hari libur juga lebih datar dan menyerupai profil hari Minggu. Temuan ini menjadi dasar untuk memasukkan indikator `holiday` ke model yang menerima kovariat. Tanpa informasi ini, model yang hanya membaca pola minggu lalu (misalnya SNaive-168) akan keliru pada hari libur dan juga pada hari kerja tepat satu minggu setelahnya.
+### 3.4 Desain *rolling-origin backtest*
 
-### 2.5 Hubungan beban dengan cuaca
-
-Korelasi Pearson antara beban dan suhu pada skala per jam cukup kuat ($r = 0{,}653$ untuk Tocumen, $0{,}648$ untuk David, $0{,}627$ untuk Santiago). Pada skala rata-rata harian, korelasi tersebut turun drastis menjadi $0{,}153$, $0{,}140$, dan $0{,}112$. Perbedaan ini menunjukkan bahwa korelasi per jam sebagian besar merupakan korelasi palsu (*spurious*) akibat siklus harian bersama: suhu dan beban sama-sama naik pada siang hari. Faktor pengacau (*confounder*) dalam hal ini adalah jam dalam sehari, bukan pengaruh suhu terhadap beban.
-
-Penjelasan kedua bersifat klimatologis. Variasi suhu antarhari di Panama kecil: simpangan baku rata-rata harian suhu Tocumen hanya 0,69 °C, sedangkan simpangan baku per jam 1,68 °C. Dengan rentang yang sempit, efek suhu terhadap beban harian sulit dibedakan dari derau. Implikasinya, kontribusi cuaca untuk peramalan 24 jam diperkirakan moderat dan terutama bekerja melalui deviasi suhu di dalam hari terhadap pola musimannya. Dugaan ini diuji secara langsung pada Subbab 4 melalui perbandingan Chronos-2 dengan dan tanpa kovariat, serta melalui koefisien suhu pada SARIMAX-DHR.
-
-### 2.6 Dekomposisi, autokorelasi, dan stasioneritas
-
-**Dekomposisi MSTL.** Indeks kekuatan komponen $F = \max\{0,\, 1 - \operatorname{Var}(R_t)/\operatorname{Var}(S_t + R_t)\}$ bernilai 0,906 untuk musiman harian, 0,712 untuk musiman mingguan, dan 0,502 untuk tren (data 2019). Musiman harian merupakan sumber variasi paling dominan, diikuti musiman mingguan. Komponen tren dalam satu tahun relatif lemah, sejalan dengan pertumbuhan tahunan 2 sampai 3%.
-
-**Autokorelasi.** ACF bernilai 0,949 pada lag 1, negatif pada lag 12 ($-0{,}381$, fase berlawanan dalam siklus harian), lalu kembali tinggi pada lag 24 (0,777), lag 168 (0,843), dan lag 336 (0,823). Nilai ACF pada lag 168 lebih tinggi daripada lag 24 dan lag 48 (0,658). Hal ini menegaskan bahwa minggu lalu pada jam yang sama merupakan prediktor yang lebih baik daripada kemarin, sehingga *seasonal naive* mingguan menjadi acuan yang wajar. PACF didominasi lag 1 (0,95) dan lag 2 ($-0{,}70$), dengan lonjakan di sekitar lag 24 sampai 26 dan lag 49. Pola ini mendukung komponen AR orde 2 ditambah komponen AR musiman 24 jam, yaitu struktur yang dipakai pada SARIMAX-W.
-
-**Stasioneritas.** Kedua uji pada rata-rata harian memberikan kesimpulan yang bertentangan. Uji ADF menolak hipotesis akar unit (statistik $-3{,}559$; $p = 0{,}0066$), sedangkan uji KPSS juga menolak hipotesis stasioneritas (statistik 3,07; $p \le 0{,}01$). Konflik seperti ini lazim terjadi pada deret yang memiliki tren deterministik atau perubahan struktural, dalam hal ini pergeseran level COVID-19 pada akhir sampel. Setelah pembedaan pertama, kedua uji sepakat bahwa deret stasioner (ADF $p \approx 0$; KPSS $p = 0{,}10$). Hasil ini menjadi dasar penggunaan pembedaan pada model statistik: $d = 1$ pada galat SARIMAX-DHR dan pembedaan musiman 168 jam pada SARIMAX-W.
-
-## 3. Metodologi
-
-### 3.1 Desain evaluasi: *rolling-origin backtest*
-
-Evaluasi dilakukan dengan *backtest* bergulir. Setiap hari pukul 00.00 (origin $T$), setiap model hanya melihat data hingga $T$ lalu meramal $y_{T+1}, \dots, y_{T+24}$. Origin bergeser satu hari dari 1 Januari sampai 26 Juni 2020, sehingga diperoleh 178 origin x 24 jam = 4.272 pasangan ramalan-aktual per model. Origin dibagi menjadi dua regime:
+Setiap hari pukul 00.00 (origin $T$), setiap model hanya melihat data hingga $T$ lalu meramal $y_{T+1}, \dots, y_{T+24}$. Origin bergeser satu hari dari 1 Januari sampai 26 Juni 2020, sehingga diperoleh 178 origin × 24 jam = 4.272 pasangan ramalan-aktual per model. Origin dibagi menjadi dua regime:
 
 - **Normal**: origin 1 Januari sampai 14 Maret 2020 (74 hari).
 - **COVID-19**: origin 15 Maret sampai 26 Juni 2020 (104 hari).
 
-Model yang memerlukan estimasi (SARIMAX-W, SARIMAX-DHR, dan XGBoost) hanya dilatih dengan data sebelum 1 Januari 2020 dan tidak dilatih ulang selama periode uji. *Foundation model* menerima konteks 2.048 jam terakhir (sekitar 85 hari) pada setiap origin. Desain ini memberikan perbandingan yang adil: semua model memakai informasi yang sama-sama tersedia pada waktu $T$.
+Skala MASE adalah rata-rata galat absolut *seasonal naive* mingguan, $|y_t - y_{t-168}|$, pada data sebelum 2020, yaitu 58,37 MWh.
 
-### 3.2 Model
+### 3.5 Konteks dan kovariat *foundation model*
 
-**(1) *Seasonal naive* mingguan (SNaive-168)** sebagai acuan minimum:
-$$\hat{y}_{T+h} = y_{T+h-168}.$$
+Pada setiap origin, *foundation model* menerima 2.048 jam terakhir (sekitar 85 hari, atau lebih dari 12 siklus mingguan). Untuk Chronos-2 dengan kovariat, setiap masukan berisi tiga bagian:
 
-**(2) Regresi harmonik dinamis dengan galat ARIMA (SARIMAX-DHR).** Musiman ganda dimodelkan dengan suku Fourier, sedangkan autokorelasi sisa ditangkap oleh galat ARIMA(2,1,1):
-$$y_t = \sum_{k=1}^{5}\left[a_k \sin\tfrac{2\pi k t}{24} + b_k \cos\tfrac{2\pi k t}{24}\right] + \sum_{k=1}^{5}\left[c_k \sin\tfrac{2\pi k t}{168} + d_k \cos\tfrac{2\pi k t}{168}\right] + \boldsymbol{\gamma}^\top \mathbf{x}_t + u_t,$$
-$$(1-\phi_1 B-\phi_2 B^2)(1-B)\,u_t = (1+\theta_1 B)\,\varepsilon_t,\qquad \varepsilon_t \sim N(0,\sigma^2),$$
-dengan $\mathbf{x}_t$ berisi suhu tiga kota, `holiday`, dan `school`. Pendekatan ini dipilih karena SARIMA biasa dengan periode musiman 168 tidak praktis diestimasi. Parameter diestimasi dengan MLE pada data 2019. Pada setiap origin, filter Kalman dijalankan pada 28 hari terakhir dengan parameter tetap (`apply`), lalu ramalan dan variansnya dihitung secara analitik. Kuantil ke-$\tau$ diperoleh dari $\hat{y}_{T+h} + z_\tau \hat{\sigma}_{T+h}$.
+- `target`: beban 2.048 jam terakhir.
+- `past_covariates`: enam kovariat pada 2.048 jam yang sama, yaitu suhu tiga kota, kelembapan Tocumen, `holiday`, dan `school`.
+- `future_covariates`: enam kovariat yang sama untuk 24 jam yang diramal.
 
-**(3) SARIMAX pada beda musiman mingguan (SARIMAX-W).** Pola musiman tidak dimodelkan secara deterministik, melainkan dihilangkan dengan pembedaan musiman $z_t = y_t - y_{t-168}$ (operator $1-B^{168}$). Deret $z_t$ dimodelkan sebagai regresi dengan galat ARIMA(2,0,1)(1,0,0)$_{24}$:
-$$z_t = \boldsymbol{\delta}^\top \Delta_{168}\mathbf{x}_t + v_t,\qquad (1-\phi_1 B-\phi_2 B^2)(1-\Phi_1 B^{24})\,v_t = (1+\theta_1 B)\,\varepsilon_t,$$
-dengan $\Delta_{168}\mathbf{x}_t = \mathbf{x}_t - \mathbf{x}_{t-168}$ untuk suhu tiga kota, `holiday`, dan `school`. Ramalan beban diperoleh kembali melalui $\hat{y}_{T+h} = y_{T+h-168} + \hat{z}_{T+h}$, sehingga varians ramalan $y$ sama dengan varians ramalan $z$. Model ini setara dengan *seasonal naive* yang dikoreksi oleh dinamika ARIMA, sehingga bentuk profil harian ikut diperbarui setiap minggu. Estimasi MLE pada data 2019.
+Bobot model diunduh sekali dari Hugging Face ke folder `models/` melalui fungsi `local_model`, lalu selalu dimuat dari folder lokal.
 
-**(4) XGBoost.** Model *gradient boosting* $\hat{y}=\sum_{m=1}^{M} f_m(\mathbf{z})$ dengan fitur kalender (jam, hari, bulan, hari ke-), cuaca, indikator libur, serta lag 24, 48, 72, 168, dan 336 jam dan rata-rata bergulir dari lag 24. Seluruh lag $\geq 24$ sehingga satu model sah dipakai untuk semua horizon 1 sampai 24 jam tanpa kebocoran informasi. Jumlah pohon ditentukan dengan *early stopping* pada data validasi November sampai Desember 2019.
+## 4. Analisis eksploratif beban (Tahap 3)
 
-**(5) sampai (8) *Foundation model* zero-shot**: Chronos-Bolt (*small*), Chronos-2 univariat, Chronos-2 dengan kovariat (suhu tiga kota, kelembapan Tocumen, `holiday`, `school` pada masa lalu dan masa depan), dan TimesFM 2.0 (500M). Tidak ada parameter yang diestimasi pada data Panama.
+### 4.1 Tren tahunan
 
-### 3.3 Ukuran akurasi
+Rata-rata beban tahunan meningkat dari 1.131,5 MWh (2015) menjadi 1.243,6 MWh (2019), dengan laju pertumbuhan 2,27%, 2,17%, 1,98%, dan 3,14% per tahun (sekitar 2,4% per tahun secara majemuk). Rata-rata 2020 tercatat 5,90% lebih rendah daripada 2019. Angka ini tidak setara dengan laju tahunan lain karena data 2020 hanya mencakup Januari sampai Juni dan memuat pembatasan COVID-19.
+
+### 4.2 Perubahan struktural COVID-19
+
+Rata-rata beban pada regime Normal (1 Januari sampai 14 Maret 2020) adalah 1.277,3 MWh, sedangkan pada regime COVID-19 (15 Maret sampai 26 Juni 2020) adalah 1.094,1 MWh, atau turun 14,3%. Perubahan ini berupa pergeseran level yang persisten, bukan pencilan sesaat. Grafik deret per jam dan rata-rata mingguan memperlihatkan bahwa penurunan terkonsentrasi setelah pertengahan Maret 2020.
+
+### 4.3 Musiman harian, musiman mingguan, dan efek hari libur
+
+Peta panas rata-rata beban per jam × hari (2019) memperlihatkan dua pola musiman yang saling bertumpuk:
+
+- **Musiman harian.** Beban terendah terjadi sekitar pukul 04.00 sampai 06.00 dan puncaknya sekitar pukul 13.00. Rasio puncak terhadap lembah sebesar 1,61 berarti beban siang hari sekitar 61% lebih tinggi daripada dini hari. Puncak siang hari, bukan malam hari, merupakan ciri sistem tropis dengan beban pendingin ruangan dan aktivitas komersial yang dominan `[RUJUKAN DIPERLUKAN: karakteristik kurva beban harian negara tropis]`.
+- **Musiman mingguan.** Senin sampai Jumat relatif setara. Beban turun pada Sabtu dan lebih rendah lagi pada Minggu.
+
+**Efek hari libur.** Pada hari kerja, rata-rata beban harian saat libur nasional adalah 1.069,3 MWh, sedangkan pada hari biasa 1.226,0 MWh. Selisih sekitar 157 MWh (−12,8%; 84 hari libur) signifikan menurut uji *t* Welch ($t = -16{,}11$; $p = 3{,}99 \times 10^{-28}$). Profil harian hari libur juga lebih datar dan menyerupai profil hari Minggu. Temuan ini menjadi dasar untuk memasukkan indikator `holiday` ke Chronos-2 dengan kovariat dan ke XGBoost. Model yang hanya membaca riwayat beban tidak tahu bahwa besok adalah hari libur.
+
+**Profil bulanan.** Rata-rata bulanan per tahun memperlihatkan beban tertinggi sekitar Maret sampai Mei, yang bertepatan dengan akhir musim kemarau dan suhu tertinggi, lalu menurun pada pertengahan tahun. Garis 2020 memperlihatkan patahan tajam mulai Maret.
+
+### 4.4 Dekomposisi, autokorelasi, dan stasioneritas
+
+**Dekomposisi MSTL.** Indeks kekuatan komponen $F = \max\{0,\, 1 - \operatorname{Var}(R_t)/\operatorname{Var}(S_t + R_t)\}$ bernilai 0,906 untuk musiman harian, 0,712 untuk musiman mingguan, dan 0,502 untuk tren (data 2019). Musiman harian merupakan sumber variasi paling dominan, diikuti musiman mingguan.
+
+**Autokorelasi.** ACF bernilai 0,777 pada lag 24 dan 0,843 pada lag 168. Nilai pada lag 168 lebih tinggi daripada lag 24, artinya minggu lalu pada jam yang sama adalah prediktor yang lebih baik daripada kemarin. Temuan ini mendasari dua keputusan: konteks *foundation model* harus jauh lebih panjang dari 168 jam, dan XGBoost membutuhkan lag 168 dan 336 jam.
+
+**Stasioneritas.** Pada rata-rata harian, uji ADF menolak hipotesis akar unit (statistik −3,559; $p = 0{,}0066$), tetapi uji KPSS juga menolak hipotesis stasioneritas (statistik 3,07; $p \le 0{,}01$). Konflik seperti ini lazim pada deret yang memiliki tren deterministik atau perubahan struktural, dalam hal ini pergeseran level COVID-19 pada akhir sampel. Setelah pembedaan pertama, kedua uji sepakat bahwa deret stasioner (ADF $p \approx 0$; KPSS $p = 0{,}10$). Keempat model yang dipakai tidak memerlukan asumsi stasioneritas, tetapi hasil ini menjelaskan mengapa model yang memakai level masa lalu tanpa pembaruan rentan terhadap pergeseran level.
+
+## 5. Analisis cuaca tiga kota (Tahap 4)
+
+### 5.1 Karakteristik cuaca
+
+| Kota | Suhu rata-rata (°C) | Simpangan baku suhu (°C) | Rentang suhu (°C) |
+|---|---|---|---|
+| Tocumen | 27,40 | 1,68 | 22,95 – 35,04 |
+| Santiago | 26,92 | 3,02 | 19,77 – 39,06 |
+| David | 24,72 | 2,41 | 19,93 – 34,22 |
+
+Tocumen, yang mewakili Kota Panama sebagai pusat beban, paling hangat dan paling stabil. Santiago memiliki variasi suhu terbesar. Ketiga kota memiliki suhu tertinggi pada Maret sampai April dan presipitasi yang meningkat mulai Mei, sesuai pola musim kemarau dan musim hujan Panama.
+
+### 5.2 Korelasi dengan beban
+
+**Tabel 5.1** Korelasi Pearson variabel cuaca dengan beban
+
+| Variabel | Kota | *r* per jam | *r* harian | *r* di jam yang sama |
+|---|---|---|---|---|
+| Suhu | Tocumen | 0,653 | 0,153 | 0,130 |
+| Suhu | Santiago | 0,627 | 0,112 | 0,106 |
+| Suhu | David | 0,648 | 0,140 | 0,129 |
+| Kelembapan | Tocumen | −0,037 | 0,072 | 0,080 |
+| Presipitasi cair | Tocumen | 0,073 | −0,165 | −0,131 |
+| Angin | Tocumen | 0,098 | −0,007 | 0,016 |
+
+Korelasi suhu dan beban pada data per jam tampak kuat ($r \approx 0{,}63$ sampai $0{,}65$). Namun, korelasi tersebut turun drastis menjadi $0{,}11$ sampai $0{,}15$ pada rata-rata harian. Kolom “di jam yang sama” menghitung korelasi secara terpisah untuk setiap jam (0 sampai 23), lalu merata-ratakannya. Cara ini menghapus pola harian bersama, karena suhu dan beban sama-sama naik pada siang hari. Hasilnya juga hanya $0{,}11$ sampai $0{,}13$. Dengan demikian, korelasi per jam sebagian besar merupakan korelasi palsu (*spurious*) dengan jam dalam sehari sebagai faktor pengacau (*confounder*).
+
+Presipitasi berkorelasi negatif dengan beban pada skala harian ($r = -0{,}165$ di Tocumen). Hari hujan cenderung lebih sejuk dan mengurangi kebutuhan pendingin ruangan. Kelembapan dan angin hampir tidak berhubungan dengan beban.
+
+Grafik korelasi per jam memperlihatkan bahwa hubungan suhu dan beban paling lemah pada jam-jam transisi aktivitas, yaitu sekitar pukul 06.00, 10.00 sampai 11.00, dan 18.00. Hubungannya lebih kuat pada dini hari dan malam hari ($r \approx 0{,}15$ sampai $0{,}22$), ketika suhu lebih menentukan pemakaian pendingin ruangan rumah tangga.
+
+### 5.3 Bentuk hubungan pada hari kerja biasa
+
+Plot sebar suhu harian terhadap beban harian dibatasi pada hari kerja biasa sebelum 15 Maret 2020 (tanpa akhir pekan, libur, dan masa COVID-19). Pembatasan ini dipakai agar efek kalender tidak tercampur dengan efek suhu. Kemiringan regresi linearnya adalah 29,0 MWh per °C di Tocumen, 12,4 MWh per °C di Santiago, dan 21,4 MWh per °C di David. Kemiringan ini masih tercampur dengan musim dan tren tahunan (bulan panas juga bulan dengan aktivitas tinggi), sehingga tidak dapat ditafsirkan sebagai efek kausal.
+
+### 5.4 Implikasi untuk pemodelan
+
+Variasi suhu antarhari di Panama kecil. Simpangan baku rata-rata harian suhu Tocumen hanya 0,69 °C, sedangkan simpangan baku per jam 1,68 °C. Dengan rentang yang sempit, kontribusi cuaca untuk peramalan 24 jam diperkirakan moderat, terutama melalui deviasi suhu terhadap pola musimannya. Dugaan ini diuji pada Subbab 7 melalui perbandingan Chronos-2 dengan dan tanpa kovariat, dan pada Subbab 8 melalui simulasi skenario suhu.
+
+Profil harian pada notebook digambar sebagai indeks (rata-rata harian = 100) agar beban dan suhu dapat dibandingkan pada satu sumbu. Beban naik lebih curam pada pagi hari dan memiliki puncak kedua sekitar pukul 19.00 yang tidak dimiliki suhu. Pola ini menunjukkan bahwa ritme aktivitas manusia lebih menentukan bentuk kurva beban daripada suhu.
+
+## 6. Pemodelan (Tahap 5)
+
+### 6.1 XGBoost
+
+XGBoost membangun ramalan sebagai jumlah pohon keputusan, $\hat{y} = \sum_{m=1}^{M} f_m(\mathbf{z})$, yang dilatih bertahap untuk mengurangi galat pohon sebelumnya. Model dilatih pada data hingga Oktober 2019 (41.975 jam). Data November sampai Desember 2019 (1.464 jam) dipakai untuk *early stopping*. Hiperparameter ditetapkan pada nilai yang lazim (laju belajar 0,03, kedalaman 7, *subsample* 0,8) tanpa pencarian *grid*, agar perbandingan dengan *foundation model zero-shot* tidak memberi keunggulan penyetelan yang tidak seimbang. Iterasi terbaik adalah 151 pohon dengan MAE validasi 49,11 MWh.
+
+Kepentingan fitur (persentase *total gain*) didominasi lag 168 jam (57,7%), lag 336 jam (18,3%), dan lag 24 jam (8,9%), diikuti jam (3,4%), `Holiday_ID` (2,6%), hari dalam minggu (1,7%), dan `holiday` (1,2%). Suhu Tocumen hanya menyumbang 1,1%. Urutan ini sejalan dengan EDA: pola minggu lalu adalah informasi terpenting, kalender kedua, dan cuaca kecil.
+
+### 6.2 Chronos-Bolt
+
+Chronos-Bolt (*small*, 47,7 juta parameter) membagi konteks 2.048 jam menjadi potongan (*patch*), menormalisasi skalanya, lalu memakai arsitektur *encoder-decoder* keluarga T5 untuk mengeluarkan sembilan kuantil secara langsung untuk 24 jam ke depan. Model ini hanya membaca riwayat beban.
+
+### 6.3 Chronos-2 tanpa dan dengan kovariat
+
+Chronos-2 (119,5 juta parameter) memakai *group attention* sehingga target dan kovariat dalam satu kelompok dapat saling “melihat” di dalam konteks. Dalam konfigurasi tanpa kovariat, masukannya sama dengan Chronos-Bolt. Dalam konfigurasi dengan kovariat, masukannya ditambah enam kovariat masa lalu dan masa depan (Subbab 3.5). Kovariat masa depan memungkinkan model mengetahui, misalnya, bahwa jam-jam yang diramal jatuh pada hari libur. Di dashboard, kedua konfigurasi ditampilkan sebagai satu model (Chronos-2) dengan sakelar kovariat.
+
+### 6.4 TimesFM 2.0
+
+TimesFM 2.0 (498,8 juta parameter) adalah model *decoder-only*. Konteks dipotong menjadi *patch* masukan 32 jam, diproses secara autoregresif, dan menghasilkan *patch* keluaran 128 jam yang dipotong menjadi 24 jam. Keluarannya berupa rata-rata dan kuantil 0,1 sampai 0,9. Inferensi dilakukan dalam *batch* berukuran 16.
+
+### 6.5 Ukuran akurasi
 
 Dengan $e_t = y_t - \hat{y}_t$ dan $n$ pasangan ramalan-aktual:
 
@@ -157,263 +231,235 @@ Dengan $e_t = y_t - \hat{y}_t$ dan $n$ pasangan ramalan-aktual:
 | MAE | $\frac{1}{n}\sum \lvert e_t\rvert$ | Galat rata-rata dalam MWh |
 | RMSE | $\sqrt{\frac{1}{n}\sum e_t^2}$ | Menghukum galat besar lebih berat |
 | MAPE | $\frac{100}{n}\sum \lvert e_t / y_t\rvert$ | Galat relatif (%) |
-| MASE | $\text{MAE} / \frac{1}{m}\sum_{t} \lvert y_t - y_{t-168}\rvert$ | Skala terhadap *seasonal naive* di data latih; < 1 berarti lebih baik daripada naive |
+| MASE | $\text{MAE} / \frac{1}{m}\sum_{t} \lvert y_t - y_{t-168}\rvert$ | Skala terhadap *seasonal naive* di data latih; < 1 berarti lebih baik daripada cara naif itu |
 | WQL | $\frac{1}{9}\sum_{\tau} \frac{2\sum_t \rho_\tau(y_t, \hat{q}_{\tau,t})}{\sum_t \lvert y_t\rvert}$ | Akurasi distribusi prediktif; pendekatan diskret CRPS ternormalisasi |
 | Cakupan 80% | proporsi $y_t \in [\hat{q}_{0,1}, \hat{q}_{0,9}]$ | Kalibrasi interval; idealnya mendekati 80% |
 
-dengan fungsi kerugian *pinball* $\rho_\tau(y,q) = \max\{\tau(y-q), (\tau-1)(y-q)\}$ dan $\tau \in \{0{,}1, \dots, 0{,}9\}$.
+dengan fungsi kerugian *pinball* $\rho_\tau(y,q) = \max\{\tau(y-q), (\tau-1)(y-q)\}$. XGBoost hanya menghasilkan nilai titik, sehingga WQL dan cakupan interval tidak dihitung untuk model ini. Untuk *foundation model*, ramalan titik yang dievaluasi adalah median atau rata-rata yang dikembalikan model.
 
-### 3.4 Uji Diebold-Mariano
+## 7. Evaluasi (Tahap 6)
 
-Untuk menguji $H_0$: kedua model memiliki akurasi yang sama, didefinisikan selisih kerugian harian $d_s = L^{A}_s - L^{B}_s$ dengan $L_s$ adalah rata-rata galat absolut pada origin $s$. Statistik uji
-$$DM = \frac{\bar{d}}{\sqrt{\hat{V}(\bar{d})}}, \qquad \hat{V}(\bar{d}) = \frac{1}{S}\left[\hat{\gamma}_0 + 2\sum_{k=1}^{5}\left(1-\tfrac{k}{6}\right)\hat{\gamma}_k\right],$$
-dengan varians HAC Newey-West (lag 5) untuk mengakomodasi autokorelasi galat antarhari. Nilai $p$ dihitung dari distribusi $t$ dengan $S-1$ derajat bebas. $DM < 0$ dengan $p < 0{,}05$ berarti model A lebih akurat.
+Seluruh ramalan disatukan dalam satu tabel panjang (satu baris per origin × jam × model, 21.360 baris) dan disimpan ke `outputs/forecast_backtest.csv`.
 
-### 3.5 Implementasi model
+### 7.1 Akurasi keseluruhan
 
-**Model 1: *Seasonal naive* mingguan.** Acuan ini menyalin pola minggu sebelumnya. Model yang lebih kompleks dianggap berguna hanya jika mengalahkan acuan ini secara meyakinkan.
+**Tabel 7.1** Akurasi keseluruhan (178 origin × 24 jam)
 
-**Model 2: SARIMAX-DHR.** Suku Fourier untuk periode 24 dan 168 jam masing-masing memakai $K=5$ pasang. Harmonik mingguan $k \leq 5$ tidak berimpit dengan harmonik harian (harmonik harian pertama setara dengan harmonik mingguan ke-7), sehingga matriks regresor tidak kolinear sempurna. Ringkasan estimasi di bawah memuat koefisien, galat baku, serta uji Ljung-Box dan Jarque-Bera untuk residu.
-
-**Model 3: SARIMAX-W.** Pembedaan musiman 168 jam membuat model selalu berangkat dari pola minggu lalu, lalu ARIMA mengoreksi simpangan yang persisten. Jendela filter Kalman sama dengan SARIMAX-DHR (28 hari). Data latih dimulai 8 Januari 2019 agar beda musiman pertama tidak memakai data 2018 secara implisit di luar jendela estimasi.
-
-**Model 4: XGBoost.** Model dilatih pada data hingga Oktober 2019; data November sampai Desember 2019 dipakai untuk *early stopping*. Hiperparameter ditetapkan pada nilai yang lazim tanpa pencarian *grid*, agar perbandingan dengan *foundation model* zero-shot tidak memberi keunggulan penyetelan yang tidak seimbang.
-
-**Model 5 sampai 8: *Foundation model*.** Bobot model diunduh sekali dari Hugging Face ke folder `models/` lalu selalu dimuat dari folder lokal. Pada pemanggilan berikutnya notebook tidak lagi memerlukan internet. Jumlah parameter dan waktu inferensi dicatat untuk membandingkan biaya komputasi.
-
-## 4. Hasil
-
-Seluruh ramalan disatukan dalam satu tabel panjang (satu baris per origin x jam x model) dan disimpan ke `outputs/forecast_backtest.csv` agar analisis lanjutan maupun dashboard tidak perlu menjalankan ulang model.
-
-**Tabel 4.1** Akurasi keseluruhan (178 origin x 24 jam)
-
-| model | MAE | RMSE | MAPE (%) | MASE | WQL | Cakupan 80% (%) | Skill vs SNaive (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Chronos-2+Kov | 32.891 | 48.005 | 2.793 | 0.564 | 0.022 | 74.485 | 54.099 |
-| Chronos-2 | 33.495 | 50.939 | 2.854 | 0.574 | 0.023 | 74.930 | 53.257 |
-| Chronos-Bolt | 37.253 | 56.259 | 3.182 | 0.638 | 0.025 | 80.009 | 48.012 |
-| TimesFM-2.0 | 37.976 | 56.580 | 3.221 | 0.651 | 0.026 | 74.953 | 47.003 |
-| XGBoost | 48.605 | 69.858 | 4.186 | 0.833 | nan | nan | 32.169 |
-| SARIMAX-W | 53.111 | 80.860 | 4.440 | 0.910 | 0.038 | 87.430 | 25.882 |
-| SNaive-168 | 71.657 | 100.106 | 6.112 | 1.228 | nan | nan | 0.000 |
-| SARIMAX-DHR | 102.237 | 142.880 | 9.024 | 1.752 | 0.071 | 75.281 | -42.676 |
-
-**Tabel 4.2** MAPE dan cakupan interval 80% menurut regime
-
-| model | MAPE (%) COVID-19 | MAPE (%) Normal | Cakupan 80% (%) COVID-19 | Cakupan 80% (%) Normal |
-| --- | --- | --- | --- | --- |
-| Chronos-2+Kov | 2.772 | 2.822 | 72.396 | 77.421 |
-| Chronos-2 | 2.939 | 2.735 | 72.436 | 78.435 |
-| Chronos-Bolt | 3.217 | 3.134 | 76.643 | 84.741 |
-| TimesFM-2.0 | 3.274 | 3.146 | 69.792 | 82.207 |
-| XGBoost | 4.533 | 3.699 | nan | nan |
-| SARIMAX-W | 4.237 | 4.726 | 89.503 | 84.516 |
-| SNaive-168 | 5.627 | 6.794 | nan | nan |
-| SARIMAX-DHR | 11.792 | 5.133 | 64.543 | 90.372 |
-
-### 4.1 Akurasi keseluruhan
-
-Berdasarkan 4.272 pasangan ramalan-aktual per model, urutan akurasi menurut MAPE adalah sebagai berikut.
-
-| Peringkat | Model | MAE (MWh) | MAPE (%) | MASE | WQL | Cakupan 80% (%) |
-|---|---|---|---|---|---|---|
-| 1 | Chronos-2+Kov | 32,89 | 2,79 | 0,564 | 0,022 | 74,5 |
-| 2 | Chronos-2 | 33,49 | 2,85 | 0,574 | 0,023 | 74,9 |
-| 3 | Chronos-Bolt | 37,25 | 3,18 | 0,638 | 0,025 | 80,0 |
-| 4 | TimesFM-2.0 | 37,98 | 3,22 | 0,651 | 0,026 | 75,0 |
-| 5 | XGBoost | 48,61 | 4,19 | 0,833 | - | - |
-| 6 | SARIMAX-W | 53,11 | 4,44 | 0,910 | 0,038 | 87,4 |
-| 7 | SNaive-168 | 71,66 | 6,11 | 1,228 | - | - |
-| 8 | SARIMAX-DHR | 102,24 | 9,02 | 1,752 | 0,071 | 75,3 |
+| Peringkat | Model | MAE (MWh) | RMSE (MWh) | MAPE (%) | MASE | WQL | Cakupan 80% (%) |
+|---|---|---|---|---|---|---|---|
+| 1 | Chronos-2 + kovariat | 32,89 | 48,00 | 2,79 | 0,564 | 0,0223 | 74,5 |
+| 2 | Chronos-2 tanpa kovariat | 33,49 | 50,94 | 2,85 | 0,574 | 0,0229 | 74,9 |
+| 3 | Chronos-Bolt | 37,25 | 56,26 | 3,18 | 0,638 | 0,0255 | 80,0 |
+| 4 | TimesFM 2.0 | 37,98 | 56,58 | 3,22 | 0,651 | 0,0257 | 75,0 |
+| 5 | XGBoost | 48,61 | 69,86 | 4,19 | 0,833 | – | – |
 
 Ada tiga hasil pokok.
 
-1. **Peringkat atas.** Empat peringkat teratas ditempati *foundation model*. Chronos-2 dengan kovariat menurunkan MAE sebesar 54,1% relatif terhadap SNaive-168.
-2. **Perbandingan dengan *seasonal naive*.** Semua model kecuali SARIMAX-DHR memiliki MASE di bawah 1, artinya lebih akurat daripada *seasonal naive* mingguan pada skala data latih. SARIMAX-DHR memiliki MAE 42,7% lebih besar daripada SNaive-168.
-3. **Akurasi probabilistik.** Menurut WQL, Chronos-2 dengan kovariat paling akurat (0,022) dan SARIMAX-DHR paling buruk (0,071). Cakupan interval 80% yang paling dekat dengan nominal adalah Chronos-Bolt (80,0%). Chronos-2, Chronos-2 dengan kovariat, dan TimesFM berada di kisaran 74,5% sampai 75,0%. Interval SARIMAX-W terlalu lebar (87,4%).
+1. **Model terpilih.** Chronos-2 dengan kovariat memiliki galat terendah pada semua ukuran titik dan pada WQL. Model ini meleset rata-rata 32,9 MWh per jam, atau 2,79% dari beban aktual.
+2. **Semua model lebih baik daripada cara naif.** MASE keempat model berada di bawah 1. Artinya, semuanya lebih akurat daripada menyalin beban minggu lalu. Ketiga *foundation model* menurunkan galat sekitar 35% sampai 44% dibandingkan cara naif, sedangkan XGBoost sekitar 17%.
+3. **Akurasi probabilistik.** Interval 80% Chronos-Bolt paling mendekati nominal (80,0%). Interval Chronos-2 dan TimesFM sedikit terlalu sempit (74,5% sampai 75,0%).
 
-### 4.2 Akurasi menurut regime
+### 7.2 Akurasi menurut regime
 
-| Model | MAPE Normal (%) | MAPE COVID-19 (%) | Perubahan | Cakupan 80% Normal | Cakupan 80% COVID-19 |
+**Tabel 7.2** MAPE dan cakupan interval 80% menurut regime
+
+| Model | MAPE Normal (%) | MAPE COVID-19 (%) | Perubahan (poin) | Cakupan Normal (%) | Cakupan COVID-19 (%) |
 |---|---|---|---|---|---|
-| Chronos-2+Kov | 2,82 | 2,77 | -0,05 | 77,4 | 72,4 |
-| Chronos-2 | 2,74 | 2,94 | +0,20 | 78,4 | 72,4 |
+| Chronos-2 + kovariat | 2,82 | 2,77 | −0,05 | 77,4 | 72,4 |
+| Chronos-2 tanpa kovariat | 2,74 | 2,94 | +0,20 | 78,4 | 72,4 |
 | Chronos-Bolt | 3,13 | 3,22 | +0,08 | 84,7 | 76,6 |
-| TimesFM-2.0 | 3,15 | 3,27 | +0,13 | 82,2 | 69,8 |
-| XGBoost | 3,70 | 4,53 | +0,83 | - | - |
-| SARIMAX-W | 4,73 | 4,24 | -0,49 | 84,5 | 89,5 |
-| SNaive-168 | 6,79 | 5,63 | -1,17 | - | - |
-| SARIMAX-DHR | 5,13 | 11,79 | +6,66 | 90,4 | 64,5 |
+| TimesFM 2.0 | 3,15 | 3,27 | +0,13 | 82,2 | 69,8 |
+| XGBoost | 3,70 | 4,53 | +0,83 | – | – |
 
-Hasil per regime dapat diringkas sebagai berikut.
+- **Regime Normal.** Model terbaik adalah Chronos-2 tanpa kovariat (MAPE 2,74%). Kovariat sedikit memperburuk akurasi pada periode ini.
+- **Regime COVID-19.** Model terbaik adalah Chronos-2 dengan kovariat (MAPE 2,77%), dan model ini satu-satunya yang membaik dibandingkan regime Normal.
+- **XGBoost** memburuk paling besar (+0,83 poin, atau naik sekitar 23%).
+- **Interval.** Seluruh *foundation model* mengalami penurunan cakupan interval 80% pada regime COVID-19, ke kisaran 69,8% sampai 76,6%.
 
-- **Regime Normal.** Model terbaik adalah Chronos-2 univariat (MAPE 2,74%).
-- **Regime COVID-19.** Model terbaik adalah Chronos-2 dengan kovariat (MAPE 2,77%).
-- **Kenaikan MAPE terbesar.** SARIMAX-DHR naik 6,66 poin persentase, diikuti XGBoost dengan kenaikan 0,83 poin persentase.
-- **Model yang membaik.** SARIMAX-W dan SNaive-168 justru membaik pada regime COVID-19. Pada regime ini, SARIMAX-W (4,24%) melampaui XGBoost (4,53%).
-- **Cakupan interval *foundation model*.** Seluruh *foundation model* mengalami penurunan cakupan interval 80% pada regime COVID-19, ke kisaran 69,8% sampai 76,6%.
+### 7.3 Galat menurut horizon
 
-### 4.3 Galat menurut horizon dan contoh ramalan
+Karena seluruh origin berada pada pukul 00.00, horizon $h$ sekaligus menunjukkan jam dalam sehari.
 
-**Galat menurut horizon.** Karena seluruh origin berada pada pukul 00.00, horizon $h$ sekaligus menunjukkan jam dalam sehari. Pola galat per model adalah sebagai berikut.
+- ***Foundation model*.** Rata-rata MAE pada $h = 1$ sampai 6 berkisar 15,2 sampai 17,6 MWh. Galat meningkat hingga puncaknya pada $h = 15$ (pukul 15.00), dengan MAE maksimum 49,0 MWh (Chronos-2 dengan kovariat) sampai 61,2 MWh (TimesFM), lalu menurun pada malam hari.
+- **XGBoost.** Galatnya lebih datar, dari 34,2 MWh pada $h = 1$ sampai 6 menjadi 42,9 MWh pada $h = 19$ sampai 24, dengan puncak 68,9 MWh pada $h = 14$. Model ini tidak memakai jam-jam terakhir sebelum origin karena seluruh lag $\geq 24$. Akibatnya, galat XGBoost pada horizon pendek dua kali lipat galat *foundation model*.
 
-- ***Foundation model*.** Rata-rata MAE pada $h = 1$ sampai 6 berkisar 15,2 sampai 17,6 MWh. Galat meningkat hingga mencapai puncak pada $h = 15$ (pukul 15.00), dengan MAE maksimum 49,0 MWh (Chronos-2+Kov) sampai 61,2 MWh (TimesFM), lalu menurun kembali pada malam hari.
-- **SARIMAX-W.** Pola galatnya serupa, tetapi dengan puncak lebih tinggi, yaitu 80,3 MWh pada $h = 14$.
-- **SARIMAX-DHR.** Model ini mencapai MAE 193,1 MWh pada $h = 14$. Galat ini terkonsentrasi pada jam siang, saat beban paling besar.
-- **XGBoost.** Galatnya relatif datar, dari 34,2 MWh pada $h = 1$ sampai 6 menjadi 42,9 MWh pada $h = 19$ sampai 24. Model ini tidak memakai informasi jam-jam terakhir sebelum origin, karena seluruh lag $\geq 24$. Akibatnya, galat XGBoost pada horizon pendek dua kali lipat galat *foundation model*.
-- **SNaive-168.** Galatnya hampir tidak bergantung pada horizon (58,4 sampai 66,7 MWh).
+### 7.4 Contoh ramalan
 
-**Contoh ramalan.**
+- **Minggu 3 sampai 9 Februari 2020 (regime Normal).** MAE mingguan semua model berdekatan: TimesFM 21,3 MWh, Chronos-2 dengan dan tanpa kovariat 22,1 MWh, Chronos-Bolt 23,8 MWh, dan XGBoost 24,5 MWh.
+- **Minggu 6 sampai 12 April 2020 (regime COVID-19, memuat libur Pekan Suci).** Indikator `holiday` bernilai 1 pada 9 sampai 12 April. MAE mingguan Chronos-2 dengan kovariat adalah 28,0 MWh, Chronos-2 tanpa kovariat 29,9 MWh, TimesFM 34,0 MWh, Chronos-Bolt 34,4 MWh, dan XGBoost 38,5 MWh. Pada Jumat Agung (10 April), MAE Chronos-2 dengan kovariat adalah 38,3 MWh, sedangkan TimesFM 53,6 MWh dan XGBoost 55,8 MWh.
 
-- **Minggu 3 sampai 9 Februari 2020 (regime Normal).** Chronos-2 dengan kovariat dan XGBoost memiliki akurasi yang mirip, dengan MAE mingguan 22,1 dan 24,5 MWh.
-- **Minggu 6 sampai 12 April 2020 (regime COVID-19, memuat libur Pekan Suci).** Indikator `holiday` bernilai 1 pada 9 sampai 12 April. MAE mingguan Chronos-2 dengan kovariat adalah 28,0 MWh, Chronos-2 29,9 MWh, XGBoost 38,5 MWh, dan SARIMAX-DHR 178,5 MWh. Galat semua model meningkat pada 9 dan 10 April. Pada dua hari tersebut, MAE Chronos-2 dengan kovariat adalah 37,3 dan 38,3 MWh, sedangkan MAE XGBoost 48,1 dan 55,8 MWh.
+Dashboard (tab Hasil prediksi) memungkinkan penelusuran setiap hari uji beserta galat harian tiap model.
 
-### 4.4 Uji Diebold-Mariano
+### 7.5 Uji Diebold-Mariano
 
-Model A dalam setiap pasangan adalah Chronos-2+Kov, yaitu model dengan MAE keseluruhan terendah.
+Untuk menguji $H_0$: kedua model memiliki akurasi yang sama, didefinisikan selisih kerugian harian $d_s = L^{A}_s - L^{B}_s$ dengan $L_s$ adalah rata-rata galat absolut pada origin $s$. Statistik uji
 
-| Model B | Semua (selisih MAE; *p*) | Normal (selisih MAE; *p*) | COVID-19 (selisih MAE; *p*) |
+$$DM = \frac{\bar{d}}{\sqrt{\hat{V}(\bar{d})}}, \qquad \hat{V}(\bar{d}) = \frac{1}{S}\left[\hat{\gamma}_0 + 2\sum_{k=1}^{5}\left(1-\tfrac{k}{6}\right)\hat{\gamma}_k\right],$$
+
+memakai varians HAC Newey-West (lag 5) untuk mengakomodasi autokorelasi galat antarhari. Nilai $p$ dihitung dari distribusi $t$ dengan $S-1$ derajat bebas. $DM < 0$ dengan $p < 0{,}05$ berarti model A lebih akurat. Model A dalam setiap pasangan adalah Chronos-2 dengan kovariat.
+
+**Tabel 7.3** Uji Diebold-Mariano (selisih MAE dalam MWh; *p*)
+
+| Model B | Semua (178 hari) | Normal (74 hari) | COVID-19 (104 hari) |
 |---|---|---|---|
-| Chronos-2 | -0,60; 0,531 | +1,41; 0,437 | -2,03; **0,033** |
-| Chronos-Bolt | -4,36; **0,004** | -3,52; 0,221 | -4,96; **0,001** |
-| TimesFM-2.0 | -5,08; **0,002** | -3,96; 0,107 | -5,88; **0,006** |
-| XGBoost | -15,71; **< 0,001** | -11,31; 0,074 | -18,85; **0,003** |
-| SARIMAX-W | -20,22; **< 0,001** | -25,11; **< 0,001** | -16,74; **< 0,001** |
-| SARIMAX-DHR | -69,35; **< 0,001** | -29,35; **< 0,001** | -97,80; **< 0,001** |
-| SNaive-168 | -38,77; **< 0,001** | -49,55; **< 0,001** | -31,09; **< 0,001** |
+| Chronos-2 tanpa kovariat | −0,60; 0,531 | +1,41; 0,437 | −2,03; **0,033** |
+| Chronos-Bolt | −4,36; **0,004** | −3,52; 0,221 | −4,96; **0,001** |
+| TimesFM 2.0 | −5,08; **0,002** | −3,96; 0,107 | −5,88; **0,006** |
+| XGBoost | −15,71; **< 0,001** | −11,31; 0,074 | −18,85; **0,003** |
 
-Selisih MAE dinyatakan dalam MWh, dan nilai *p* yang dicetak tebal signifikan pada $\alpha = 5\%$. Hasil uji dapat diringkas sebagai berikut.
+Nilai *p* yang dicetak tebal signifikan pada $\alpha = 5\%$.
 
-- **Keseluruhan periode.** Chronos-2+Kov signifikan lebih akurat daripada semua model kecuali Chronos-2 univariat.
-- **Regime Normal (74 hari).** Keunggulan atas Chronos-Bolt, TimesFM, dan XGBoost tidak signifikan, sedangkan keunggulan atas model statistik tetap signifikan.
-- **Regime COVID-19 (104 hari).** Seluruh selisih signifikan, termasuk terhadap Chronos-2 univariat.
+- **Keseluruhan periode.** Chronos-2 dengan kovariat signifikan lebih akurat daripada Chronos-Bolt, TimesFM, dan XGBoost, tetapi tidak berbeda signifikan dari Chronos-2 tanpa kovariat.
+- **Regime Normal.** Tidak ada selisih yang signifikan. Dengan hanya 74 hari, kekuatan uji terbatas.
+- **Regime COVID-19.** Seluruh selisih signifikan, termasuk terhadap Chronos-2 tanpa kovariat.
 
-**Tabel 4.3** Uji Diebold-Mariano (HAC Newey-West, lag 5)
+### 7.6 Biaya komputasi
 
-| Model A | Model B | Regime | Selisih MAE (A-B) | DM | p-value | Kesimpulan (alpha 5%) |
-| --- | --- | --- | --- | --- | --- | --- |
-| Chronos-2+Kov | Chronos-2 | Semua | -0.604 | -0.628 | 0.531 | Tidak berbeda signifikan |
-| Chronos-2+Kov | Chronos-2 | Normal | 1.407 | 0.782 | 0.437 | Tidak berbeda signifikan |
-| Chronos-2+Kov | Chronos-2 | COVID-19 | -2.034 | -2.165 | 0.033 | A lebih akurat |
-| Chronos-2+Kov | Chronos-Bolt | Semua | -4.362 | -2.955 | 0.004 | A lebih akurat |
-| Chronos-2+Kov | Chronos-Bolt | Normal | -3.520 | -1.233 | 0.221 | Tidak berbeda signifikan |
-| Chronos-2+Kov | Chronos-Bolt | COVID-19 | -4.960 | -3.357 | 0.001 | A lebih akurat |
-| Chronos-2+Kov | TimesFM-2.0 | Semua | -5.085 | -3.219 | 0.002 | A lebih akurat |
-| Chronos-2+Kov | TimesFM-2.0 | Normal | -3.965 | -1.631 | 0.107 | Tidak berbeda signifikan |
-| Chronos-2+Kov | TimesFM-2.0 | COVID-19 | -5.881 | -2.827 | 0.006 | A lebih akurat |
-| Chronos-2+Kov | XGBoost | Semua | -15.714 | -3.512 | 0.001 | A lebih akurat |
-| Chronos-2+Kov | XGBoost | Normal | -11.311 | -1.815 | 0.074 | Tidak berbeda signifikan |
-| Chronos-2+Kov | XGBoost | COVID-19 | -18.848 | -3.057 | 0.003 | A lebih akurat |
-| Chronos-2+Kov | SARIMAX-W | Semua | -20.220 | -5.475 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SARIMAX-W | Normal | -25.106 | -4.108 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SARIMAX-W | COVID-19 | -16.743 | -3.821 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SARIMAX-DHR | Semua | -69.346 | -8.681 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SARIMAX-DHR | Normal | -29.351 | -14.997 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SARIMAX-DHR | COVID-19 | -97.804 | -11.710 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SNaive-168 | Semua | -38.766 | -6.877 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SNaive-168 | Normal | -49.547 | -4.802 | 0.000 | A lebih akurat |
-| Chronos-2+Kov | SNaive-168 | COVID-19 | -31.094 | -5.661 | 0.000 | A lebih akurat |
+| Model | Parameter | Waktu untuk 178 ramalan (CPU 6 *thread*) |
+|---|---|---|
+| Chronos-2 + kovariat | 119,5 juta | sekitar 6 menit |
+| Chronos-2 tanpa kovariat | 119,5 juta | sekitar 50 detik |
+| Chronos-Bolt | 47,7 juta | sekitar 10 detik |
+| TimesFM 2.0 | 498,8 juta | sekitar 2 menit |
+| XGBoost | ratusan pohon | sekitar 3 detik (pelatihan dan prediksi) |
 
-## 5. Penyimpanan dan pemuatan ulang model
+Waktu dapat sedikit berbeda antar eksekusi. Kovariat membuat Chronos-2 sekitar tujuh kali lebih lambat karena setiap masukan berisi tujuh deret (target dan enam kovariat). Chronos-Bolt menawarkan rasio akurasi terhadap biaya yang paling baik di antara *foundation model*.
 
-Semua model disimpan di folder `models/`:
+## 8. Simulasi skenario suhu (Tahap 7)
+
+### 8.1 Desain simulasi
+
+Simulasi menjawab pertanyaan: jika suhu 24 jam yang diramal lebih panas atau lebih dingin, bagaimana ramalan beban berubah? Suhu digeser −3 sampai +3 °C (langkah 1 °C) pada satu kota (Tocumen, Santiago, atau David) atau pada ketiganya sekaligus. Kovariat lain dan seluruh data masa lalu tidak diubah.
+
+- **XGBoost**: fitur suhu pada jam yang diramal digeser, lalu model memprediksi ulang untuk seluruh 178 origin.
+- **Chronos-2 dengan kovariat**: kovariat suhu masa depan digeser. Karena setiap ramalan memerlukan sekitar 2 detik, simulasi dibatasi pada 12 hari contoh yang mencakup kedua regime dan tiga hari libur (9 Januari, 25 Februari, dan 10 April), ditambah 27 Juni 2020 (Subbab 9). Totalnya 300 ramalan pada backtest dan 25 ramalan pada hari masa depan.
+
+### 8.2 Hasil
+
+**Tabel 8.1** Perubahan rata-rata ramalan per kenaikan suhu (MWh per jam)
+
+| Suhu diubah di | XGBoost, +1 °C (178 hari) | XGBoost, +1 °C (12 hari) | Chronos-2 + kovariat, +1 °C (12 hari) | Chronos-2 + kovariat, +3 °C (12 hari) |
+|---|---|---|---|---|
+| Tocumen | +4,50 | +4,78 | +12,03 | +27,43 |
+| Santiago | +0,92 | +0,77 | +3,91 | +7,39 |
+| David | +1,25 | +1,14 | +6,16 | +12,40 |
+| Ketiga kota | +6,85 | +6,80 | +19,51 | +46,59 |
+
+Ada empat temuan.
+
+1. **Arah respons masuk akal.** Kedua model menaikkan ramalan ketika suhu naik, sesuai dengan kebutuhan pendingin ruangan.
+2. **Tocumen paling berpengaruh.** Pada kedua model, suhu Tocumen (Kota Panama) memberi respons terbesar. Hal ini konsisten dengan peran Kota Panama sebagai pusat beban nasional.
+3. **Chronos-2 lebih sensitif daripada XGBoost.** Kenaikan 1 °C di Tocumen menaikkan ramalan Chronos-2 sekitar 12 MWh per jam (sekitar 1%), sedangkan XGBoost hanya 4,5 MWh. XGBoost memotong suhu pada ambang-ambang pohon yang dipelajari dari data latih, sehingga perubahan suhu yang tidak melewati ambang tidak mengubah ramalan, dan responsnya bertangga. Chronos-2 membaca hubungan suhu-beban dari 85 hari konteks secara *in-context*.
+4. **Respons tidak linear.** Untuk Chronos-2, kenaikan 3 °C memberi respons sekitar 2,3 kali respons kenaikan 1 °C, bukan 3 kali. Pada contoh 10 April 2020, kenaikan 2 °C di Tocumen menaikkan ramalan rata-rata 38,8 MWh (3,4%).
+
+Hasil simulasi harus dibaca sebagai sensitivitas model, bukan efek kausal suhu terhadap beban. Suhu digeser tanpa mengubah kelembapan dan tanpa mengubah perilaku konsumen. Selain itu, pergeseran +3 °C pada seluruh 24 jam berada di luar variasi antarhari yang lazim di Panama (simpangan baku suhu harian Tocumen 0,69 °C).
+
+## 9. Ramalan 24 jam ke depan (Tahap 8)
+
+Data berakhir 27 Juni 2020 pukul 00.00. Keempat model meramal 24 jam berikutnya (27 Juni 2020 pukul 01.00 sampai 28 Juni 2020 pukul 00.00) dengan asumsi berikut.
+
+- **Cuaca.** Cuaca setelah 27 Juni 2020 tidak tersedia dalam dataset, sehingga suhu dan kelembapan masa depan diasumsikan sama dengan 24 jam terakhir (asumsi persistensi). Asumsi ini memengaruhi Chronos-2 dengan kovariat dan XGBoost.
+- **Kalender.** 27 Juni 2020 jatuh pada hari Sabtu dan diasumsikan bukan hari libur nasional (`holiday = 0`, `Holiday_ID = 0`). Indikator `school` mengikuti nilai terakhir.
+- **Model univariat.** Chronos-Bolt, TimesFM, dan Chronos-2 tanpa kovariat hanya membaca riwayat beban.
+
+Berbeda dengan analisis sebelumnya, ramalan masa depan kini dibuat oleh keempat model, termasuk model terpilih (Chronos-2 dengan kovariat), sehingga informasi kalender tetap dipakai. Rata-rata ramalan 24 jam berkisar 1.029 MWh (Chronos-Bolt) sampai 1.065 MWh (XGBoost), dengan titik terendah sekitar 876 sampai 952 MWh pada dini hari dan puncak sekitar 1.149 sampai 1.180 MWh. Nilai per jam disimpan di `outputs/forecast_masa_depan_24jam.csv`. Skenario suhu untuk hari ini juga dihitung dan dapat dicoba di dashboard.
+
+## 10. Penyimpanan model dan dashboard (Tahap 9–10)
 
 | Berkas | Isi | Cara memuat |
 |---|---|---|
-| `xgb_beban.json` | Model XGBoost | `m = xgb.XGBRegressor(); m.load_model('models/xgb_beban.json')` |
-| `sarimax_dhr.pkl` | Hasil estimasi SARIMAX-DHR | `SARIMAXResults.load('models/sarimax_dhr.pkl')` |
-| `sarimax_w.pkl` | Parameter dan spesifikasi SARIMAX-W (versi ringan, sekitar 1 MB, tanpa matriks *smoother* dan tanpa data latih) | `SARIMAXResults.load('models/sarimax_w.pkl').apply(z_baru, exog=X_baru)` |
-| `chronos-bolt-small/` | Bobot Chronos-Bolt | `BaseChronosPipeline.from_pretrained('models/chronos-bolt-small')` |
-| `chronos-2/` | Bobot Chronos-2 | `BaseChronosPipeline.from_pretrained('models/chronos-2')` |
-| `timesfm-2.0-500m-pytorch/` | Bobot TimesFM 2.0 | `TimesFmModelForPrediction.from_pretrained('models/timesfm-2.0-500m-pytorch')` |
+| `models/xgb_beban.json` | Model XGBoost | `m = xgb.XGBRegressor(); m.load_model('models/xgb_beban.json')` |
+| `models/chronos-bolt-small/` | Bobot Chronos-Bolt (sekitar 191 MB) | `BaseChronosPipeline.from_pretrained('models/chronos-bolt-small')` |
+| `models/chronos-2/` | Bobot Chronos-2 (sekitar 478 MB) | `BaseChronosPipeline.from_pretrained('models/chronos-2')` |
+| `models/timesfm-2.0-500m-pytorch/` | Bobot TimesFM 2.0 (sekitar 2 GB) | `TimesFmModelForPrediction.from_pretrained('models/timesfm-2.0-500m-pytorch')` |
 
-Sel berikut memverifikasi bahwa model XGBoost, SARIMAX-DHR, dan SARIMAX-W yang dimuat ulang menghasilkan prediksi identik dengan hasil *backtest* (pemeriksaan `assert`), lalu memakai Chronos-2 dari folder lokal untuk meramal 24 jam setelah akhir data. Ramalan masa depan memakai Chronos-2 univariat karena nilai cuaca setelah 27 Juni 2020 tidak tersedia dalam dataset.
+Tahap 9 memuat ulang XGBoost dan memastikan dengan `assert` bahwa prediksinya identik dengan hasil *backtest*. Folder `models/` masih memuat `sarimax_dhr.pkl` dan `sarimax_w.pkl` dari analisis sebelumnya. Kedua berkas ini tidak lagi dipakai dan aman dihapus.
 
-## 6. Pembahasan
+Tahap 10 mengekspor ringkasan seluruh hasil ke `dashboard/data.js` (sekitar 1 MB). Dashboard GitHub Pages (`dashboard/index.html`) dan versi Streamlit (`streamlit_app.py`) membaca berkas yang sama, sehingga angka di keduanya selalu sama dengan notebook. Bobot *foundation model* tidak dapat dijalankan di GitHub Pages karena halaman tersebut hanya melayani berkas statis dan ukuran bobotnya 190 MB sampai 2 GB. Oleh karena itu, dashboard menampilkan hasil yang sudah dihitung, termasuk skenario suhu.
 
-### 6.1 Mengapa *foundation model* unggul atas model yang dibangun dengan pengetahuan domain
+Dashboard terdiri atas lima tab:
 
-Keempat konfigurasi *foundation model* menempati empat peringkat teratas, padahal tidak satu pun parameternya diestimasi pada data Panama. Tiga mekanisme diduga menjelaskan temuan ini.
+1. **Beranda**: klimatograf tiga kota, temuan utama, beban harian 2015–2020, dan ringkasan apa yang diramal.
+2. **Eksplorasi data**: deret harian dengan pilihan rentang, penjelajah satu minggu per jam, peta panas, efek hari libur, profil bulanan, dekomposisi, ACF, dan uji stasioneritas.
+3. **Cuaca tiga kota**: pilihan kota, variabel, dan jenis hari; plot sebar dengan regresi; matriks korelasi tiga jenis; korelasi per jam; profil harian dan bulanan.
+4. **Performa model**: pilihan periode, metrik, dan sakelar kovariat Chronos-2; tabel metrik; galat menurut horizon dan hari; uji Diebold-Mariano; alur kerja setiap model.
+5. **Hasil prediksi**: penelusuran setiap hari uji, simulasi suhu dengan *slider*, dan ramalan 24 jam setelah akhir data.
 
-1. **Konteks panjang sebagai pengganti estimasi.** Konteks 2.048 jam (sekitar 12 minggu) memuat lebih dari dua belas siklus mingguan dan sekitar 85 siklus harian. Dengan konteks sepanjang itu, model dapat membaca bentuk musiman ganda, level terkini, dan variasi antarminggu langsung dari data terbaru. Pada model statistik, struktur yang sama harus dispesifikasikan secara eksplisit oleh analis, misalnya orde ARIMA atau jumlah harmonik Fourier. Kesalahan spesifikasi pada tahap ini langsung menjadi galat ramalan.
-2. **Adaptasi tanpa pelatihan ulang.** Setiap origin memberi konteks baru, sehingga *foundation model* secara otomatis menyesuaikan diri dengan level beban yang baru setelah pembatasan COVID-19. Sebaliknya, XGBoost, SARIMAX-W, dan SARIMAX-DHR memakai parameter hasil estimasi 2019 yang tidak diperbarui selama periode uji. Sebagian keunggulan *foundation model* karenanya berasal dari desain evaluasi tanpa pelatihan ulang. Pelatihan ulang bergulir pada model domain dapat mempersempit selisih tersebut, dan hal ini menjadi saran penelitian lanjutan.
-3. **Pengetahuan pra-pelatihan.** Pola beban listrik, yaitu musiman harian dan mingguan yang kuat dengan level yang bergeser perlahan, merupakan pola yang lazim pada korpus deret waktu publik. Model yang telah melihat banyak deret sejenis memiliki *prior* yang tepat untuk tipe deret ini. Konsekuensinya, terdapat risiko kontaminasi: jika dataset Panama atau deret beban serupa termasuk dalam korpus pra-pelatihan, akurasi *zero-shot* dapat terlihat lebih baik daripada kinerja pada deret yang benar-benar baru `[RUJUKAN DIPERLUKAN: daftar dataset pra-pelatihan Chronos-2 dan TimesFM 2.0; periksa apakah dataset Panama (Aguilar Madrid, 2021) termasuk]`.
+## 11. Pembahasan
 
-Perbedaan di antara *foundation model* juga informatif. Chronos-2 (119,5 juta parameter) lebih akurat daripada TimesFM 2.0 (498,8 juta parameter) dan Chronos-Bolt (47,7 juta parameter). Jumlah parameter bukan penentu utama akurasi untuk deret ini; arsitektur dan korpus pelatihan lebih berpengaruh. Dari sisi biaya, Chronos-Bolt meramal 178 jendela dalam 12,7 detik di CPU dengan MAPE 3,18%, sehingga menawarkan rasio akurasi terhadap biaya yang paling baik.
+### 11.1 Mengapa *foundation model* mengungguli XGBoost
 
-### 6.2 Peran kovariat cuaca dan kalender
+Ketiga *foundation model* lebih akurat daripada XGBoost, padahal tidak satu pun parameternya diestimasi pada data Panama. Tiga mekanisme diduga menjelaskan temuan ini.
 
-Penambahan kovariat menurunkan MAE Chronos-2 sebesar 0,60 MWh untuk keseluruhan periode, tetapi selisih ini tidak signifikan ($p = 0{,}53$). Pada regime Normal, kovariat justru sedikit memperburuk akurasi (+1,41 MWh, tidak signifikan). Pada regime COVID-19, kovariat memperbaiki akurasi secara signifikan (−2,03 MWh; $p = 0{,}033$). Pola ini sejalan dengan temuan eksploratif pada Subbab 2.5: dalam kondisi normal, riwayat beban sudah memuat hampir seluruh informasi yang dapat diramalkan. Kovariat baru bernilai ketika riwayat kurang informatif, yaitu setelah perubahan regime.
+1. **Informasi jam terakhir.** *Foundation model* membaca beban sampai tepat pada origin, sedangkan XGBoost hanya memakai lag minimal 24 jam. Keunggulan terbesar *foundation model* memang terlihat pada horizon pendek (Subbab 7.3).
+2. **Adaptasi tanpa pelatihan ulang.** Setiap origin memberi konteks baru, sehingga *foundation model* otomatis menyesuaikan diri dengan level beban baru setelah pembatasan COVID-19. XGBoost memakai pohon hasil pelatihan 2019 yang tidak diperbarui. Fitur bulan dan hari ke-$n$ mempelajari level musiman sebelum 2020, sehingga menghasilkan bias ke atas setelah level turun 14%. Sebagian keunggulan *foundation model* karenanya berasal dari desain evaluasi tanpa pelatihan ulang. Pelatihan ulang bergulir pada XGBoost dapat mempersempit selisih tersebut.
+3. **Pengetahuan pra-pelatihan.** Pola beban listrik (musiman harian dan mingguan yang kuat dengan level yang bergeser perlahan) lazim pada korpus deret waktu publik. Konsekuensinya, terdapat risiko kontaminasi: jika dataset Panama atau deret sejenis termasuk dalam korpus pra-pelatihan, akurasi *zero-shot* dapat terlihat lebih baik daripada kinerja pada deret yang benar-benar baru `[RUJUKAN DIPERLUKAN: daftar dataset pra-pelatihan Chronos-2 dan TimesFM 2.0]`.
 
-Kovariat mana yang memberi manfaat? Indikator `school` tetap bernilai 1 sepanjang Maret sampai Juni 2020 karena mengikuti kalender akademik resmi dan tidak mencatat penutupan sekolah akibat COVID-19. Dengan demikian, variabel ini tidak membawa informasi tentang pembatasan. Kandidat yang lebih masuk akal adalah (a) indikator `holiday`, karena April 2020 memuat 96 jam libur nasional yang tidak dapat diantisipasi dari pola minggu sebelumnya, dan (b) suhu, yang naik dari rata-rata 26,96 °C pada Januari menjadi 28,19 °C pada April dan 28,12 °C pada Mei di Tocumen. Atribusi yang pasti memerlukan analisis ablasi per kovariat, yang menjadi saran penelitian lanjutan.
+Perbedaan di antara *foundation model* juga informatif. Chronos-2 (119,5 juta parameter) lebih akurat daripada TimesFM 2.0 (498,8 juta parameter) dan Chronos-Bolt (47,7 juta parameter). Jumlah parameter bukan penentu utama akurasi untuk deret ini; arsitektur dan korpus pelatihan lebih berpengaruh.
 
-Kovariat cuaca dalam analisis ini adalah nilai observasi, bukan ramalan cuaca, sehingga manfaatnya merupakan batas atas (*oracle*). Dalam operasi nyata, ramalan suhu 24 jam ke depan memiliki galat. Manfaat kovariat suhu karenanya akan lebih kecil, sedangkan manfaat indikator kalender tetap utuh karena kalender diketahui pasti sebelumnya.
+### 11.2 Peran kovariat cuaca dan kalender
 
-### 6.3 Ketangguhan terhadap perubahan struktural COVID-19
+Penambahan kovariat menurunkan MAE Chronos-2 sebesar 0,60 MWh untuk keseluruhan periode, tetapi selisih ini tidak signifikan ($p = 0{,}53$). Pada regime Normal, kovariat justru sedikit memperburuk akurasi (+1,41 MWh, tidak signifikan). Pada regime COVID-19, kovariat memperbaiki akurasi secara signifikan (−2,03 MWh; $p = 0{,}033$). Pola ini sejalan dengan analisis cuaca (Subbab 5): setelah pola harian dikendalikan, korelasi cuaca dengan beban lemah, sehingga dalam kondisi normal riwayat beban sudah memuat hampir seluruh informasi yang dapat diramalkan.
 
-Perubahan MAPE dari regime Normal ke regime COVID-19 membedakan model secara tegas.
+Kovariat mana yang memberi manfaat pada regime COVID-19? Indikator `school` tetap bernilai 1 sepanjang Maret sampai Juni 2020 karena mengikuti kalender akademik resmi dan tidak mencatat penutupan sekolah, sehingga tidak membawa informasi tentang pembatasan. Kandidat yang lebih masuk akal adalah (a) indikator `holiday`, karena April 2020 memuat 96 jam libur nasional yang tidak dapat diantisipasi dari riwayat beban, dan (b) suhu, yang naik pada April dan Mei. Contoh 10 April 2020 (Subbab 7.4) mendukung dugaan pertama. Atribusi yang pasti memerlukan analisis ablasi per kovariat.
 
-- ***Foundation model*** relatif stabil: Chronos-2 naik dari 2,74% menjadi 2,94%, Chronos-Bolt dari 3,13% menjadi 3,22%, dan TimesFM dari 3,15% menjadi 3,27%. Chronos-2 dengan kovariat justru membaik dari 2,82% menjadi 2,77%.
-- **XGBoost** memburuk dari 3,70% menjadi 4,53% (naik sekitar 23%). Fitur kalender (bulan dan hari ke-) mempelajari hubungan musiman pada level beban sebelum 2020. Setelah level turun 14%, hubungan tersebut menghasilkan bias ke atas yang hanya sebagian dikoreksi oleh fitur lag.
-- **SARIMAX-W** membaik dari 4,73% menjadi 4,24% dan pada regime COVID-19 melampaui XGBoost. Pembedaan musiman 168 jam membuat model selalu berangkat dari pola minggu lalu, sehingga pergeseran level dan perubahan bentuk profil harian terserap dalam satu minggu.
-- **SNaive-168** juga membaik (dari 6,79% menjadi 5,63%). Dugaannya, regime Normal memuat lebih banyak transisi kalender (Tahun Baru, kembalinya aktivitas awal Januari, dan Karnaval pada Februari) yang membuat pola minggu lalu kurang representatif. Setelah penurunan awal, beban COVID-19 justru relatif datar dari minggu ke minggu.
-- **SARIMAX-DHR** gagal paling parah, dari 5,13% menjadi 11,79%. Model ini memakai bentuk musiman deterministik (suku Fourier dengan koefisien tetap dari 2019) dan tidak memiliki interaksi antara pola harian dan pola mingguan. Ketika pembatasan mengubah bentuk profil harian (beban komersial siang hari turun lebih besar daripada beban dini hari), galat ARIMA(2,1,1) hanya mampu mengoreksi level, tidak bentuk. Kasus ini menunjukkan risiko model yang terlalu bergantung pada struktur deterministik yang diestimasi dari satu regime.
+Kovariat cuaca dalam *backtest* adalah nilai observasi, sehingga manfaatnya merupakan batas atas. Dalam operasi nyata, ramalan suhu memiliki galat, sehingga manfaat kovariat suhu akan lebih kecil. Manfaat indikator kalender tetap utuh karena kalender diketahui pasti sebelumnya.
 
-Pelajaran metodologisnya: dalam kondisi perubahan struktural, model yang mengkondisikan diri pada data terbaru (*foundation model* melalui konteks, SARIMAX-W melalui pembedaan musiman) lebih tangguh daripada model yang mengandalkan struktur tetap hasil estimasi masa lalu.
+### 11.3 Ketangguhan terhadap perubahan struktural COVID-19
 
-### 6.4 Kalibrasi interval prediksi
+*Foundation model* relatif stabil: Chronos-2 tanpa kovariat naik dari 2,74% menjadi 2,94%, Chronos-Bolt dari 3,13% menjadi 3,22%, dan TimesFM dari 3,15% menjadi 3,27%. Chronos-2 dengan kovariat justru membaik dari 2,82% menjadi 2,77%. Sebaliknya, XGBoost memburuk dari 3,70% menjadi 4,53%. Pelajaran metodologisnya: dalam kondisi perubahan struktural, model yang mengkondisikan diri pada data terbaru lebih tangguh daripada model yang mengandalkan hubungan tetap hasil estimasi masa lalu.
 
-Pada regime Normal, cakupan interval 80% *foundation model* mendekati nominal: 77,4% untuk Chronos-2 dengan kovariat dan 78,4% untuk Chronos-2. Chronos-Bolt (84,7%) dan TimesFM (82,2%) sedikit terlalu lebar. Pada regime COVID-19, seluruh *foundation model* menghasilkan interval yang terlalu sempit, dengan cakupan 69,8% (TimesFM) sampai 76,6% (Chronos-Bolt). Model mempelajari tingkat ketidakpastian dari konteks yang sebagian besar masih berasal dari periode sebelum perubahan. Akibatnya, ketidakpastian setelah perubahan regime cenderung diremehkan. SARIMAX-DHR menunjukkan pola ekstrem: interval terlalu lebar pada regime Normal (90,4%) dan terlalu sempit pada regime COVID-19 (64,5%), karena varians galatnya tetap dari estimasi 2019. SARIMAX-W menghasilkan interval yang terlalu lebar pada kedua regime (84,5% dan 89,5%), karena $\sigma^2$ hasil estimasi 2019 diduga membesar akibat anomali Januari 2019 dan galat besar di sekitar hari libur. Interval analitik berasumsi Gaussian juga tidak menangkap kesalahan spesifikasi bentuk musiman.
+### 11.4 Kalibrasi interval prediksi
 
-Untuk penggunaan operasional, interval dari *foundation model* sebaiknya dikalibrasi ulang, misalnya dengan *conformal prediction* bergulir yang menyesuaikan lebar interval berdasarkan galat terbaru `[RUJUKAN DIPERLUKAN: metode conformal prediction adaptif untuk deret waktu]`.
+Pada regime Normal, cakupan interval 80% Chronos-2 mendekati nominal (77,4% dengan kovariat dan 78,4% tanpa kovariat), sedangkan Chronos-Bolt (84,7%) dan TimesFM (82,2%) sedikit terlalu lebar. Pada regime COVID-19, seluruh *foundation model* menghasilkan interval yang terlalu sempit, dengan cakupan 69,8% (TimesFM) sampai 76,6% (Chronos-Bolt). Model mempelajari tingkat ketidakpastian dari konteks yang sebagian besar masih berasal dari periode sebelum perubahan, sehingga ketidakpastian setelah perubahan regime diremehkan. Untuk penggunaan operasional, interval sebaiknya dikalibrasi ulang, misalnya dengan *conformal prediction* bergulir `[RUJUKAN DIPERLUKAN: metode conformal prediction adaptif untuk deret waktu]`.
 
-### 6.5 Posisi hasil terhadap penelitian terdahulu
+### 11.5 Posisi hasil terhadap penelitian terdahulu
 
-Aguilar Madrid dan Antonio (2021) memakai dataset yang sama untuk horizon mingguan (168 jam) dengan model *machine learning*, dengan periode uji sebelum pandemi. Karena horizon, periode uji, dan definisi galat berbeda, angka dalam penelitian ini tidak dapat dibandingkan secara langsung dengan angka mereka. Kesamaannya terletak pada temuan bahwa variabel kalender dan pola musiman merupakan prediktor utama. Penelitian ini menambahkan dua hal: pembanding *foundation model zero-shot* dan pengujian pada periode perubahan struktural. Klaim pengembang bahwa Chronos-2 paling diuntungkan pada tugas yang memiliki kovariat `[verifikasi pada Ansari dkk., 2025]` hanya didukung sebagian oleh data Panama, karena manfaat kovariat signifikan pada regime COVID-19 tetapi tidak pada regime Normal.
+Aguilar Madrid dan Antonio (2021) memakai dataset yang sama untuk horizon mingguan (168 jam) dengan model *machine learning* dan periode uji sebelum pandemi. Karena horizon, periode uji, dan definisi galat berbeda, angka dalam penelitian ini tidak dapat dibandingkan secara langsung. Kesamaannya terletak pada temuan bahwa variabel kalender dan pola musiman merupakan prediktor utama, sebagaimana juga terlihat dari kepentingan fitur XGBoost. Penelitian ini menambahkan pembanding *foundation model zero-shot*, pengujian pada periode perubahan struktural, dan simulasi sensitivitas suhu.
 
-### 6.6 Keterbatasan
+### 11.6 Keterbatasan
 
-1. **Kovariat *oracle*.** Cuaca observasi dipakai sebagai kovariat masa depan, sehingga akurasi model berkovariat merupakan batas atas.
-2. **Satu deret dan satu negara.** Generalisasi ke sistem lain, misalnya sistem dengan puncak malam hari, memerlukan pengujian tambahan.
-3. **Tanpa pelatihan ulang dan tanpa penyetelan hiperparameter.** Pada model domain, keputusan ini membuat perbandingan konservatif bagi model domain.
-4. **Kekuatan uji terbatas.** Uji Diebold-Mariano pada regime Normal hanya memakai 74 hari, sehingga beberapa selisih yang cukup besar tidak signifikan.
-5. **Kualitas pengukuran variabel kalender.** Indikator `school` tidak mencatat penutupan sekolah tahun 2020.
-6. **Model yang tidak dijalankan.** Moirai, Lag-Llama, dan TimeGPT hanya dibahas secara konseptual.
-7. **Kemungkinan kontaminasi data pra-pelatihan**, sebagaimana dijelaskan pada Subbab 6.1.
+1. **Kovariat *oracle*.** Cuaca observasi dipakai sebagai kovariat masa depan pada *backtest*, sehingga akurasi model berkovariat merupakan batas atas.
+2. **Asumsi persistensi** pada ramalan 27 Juni 2020 karena cuaca masa depan tidak tersedia.
+3. **Satu deret dan satu negara.** Generalisasi ke sistem lain, misalnya sistem dengan puncak malam hari, memerlukan pengujian tambahan.
+4. **Tanpa pelatihan ulang dan tanpa penyetelan hiperparameter** pada XGBoost, sehingga perbandingannya konservatif bagi XGBoost.
+5. **Kekuatan uji terbatas.** Uji Diebold-Mariano pada regime Normal hanya memakai 74 hari.
+6. **Simulasi Chronos-2 hanya pada 12 hari contoh** karena biaya komputasi di CPU.
+7. **Kualitas variabel kalender.** Indikator `school` tidak mencatat penutupan sekolah tahun 2020.
+8. **Kemungkinan kontaminasi data pra-pelatihan**, sebagaimana dijelaskan pada Subbab 11.1.
 
-## 7. Kesimpulan dan saran
+## 12. Kesimpulan dan saran
 
-### 7.1 Kesimpulan
+### 12.1 Kesimpulan
 
-1. **Karakteristik data.** Beban listrik Panama didominasi musiman harian (kekuatan 0,906; puncak sekitar pukul 13.00 dengan rasio puncak terhadap lembah 1,61) dan musiman mingguan (kekuatan 0,712). Tren tahunannya tumbuh 2 sampai 3% per tahun, dan efek hari libur signifikan (sekitar −12,8% pada hari kerja; $p < 0{,}001$). Pembatasan COVID-19 menurunkan beban rata-rata sebesar 14,3%. Hubungan suhu dengan beban pada skala harian lemah ($r \approx 0{,}11$ sampai $0{,}15$) karena variasi suhu antarhari kecil.
-2. **Akurasi *foundation model*.** Ketiga *foundation model* yang dijalankan secara *zero-shot* lebih akurat daripada seluruh model statistik dan XGBoost. Chronos-2 univariat mencapai MAPE 2,85%, Chronos-Bolt 3,18%, dan TimesFM 2.0 3,22%. Sebagai pembanding, XGBoost mencapai 4,19%, SARIMAX-W 4,44%, SNaive-168 6,11%, dan SARIMAX-DHR 9,02%.
-3. **Manfaat kovariat.** Kovariat cuaca dan kalender menjadikan Chronos-2 model terbaik (MAPE 2,79%). Manfaatnya terhadap Chronos-2 univariat hanya signifikan pada regime COVID-19 ($p = 0{,}033$).
-4. **Ketangguhan terhadap COVID-19.** *Foundation model* dan SARIMAX-W tetap stabil setelah perubahan struktural. XGBoost memburuk sekitar 23%, dan SARIMAX-DHR gagal (MAPE 11,79%) karena bentuk musiman deterministiknya tidak lagi sesuai.
-5. **Signifikansi.** Keunggulan Chronos-2 dengan kovariat atas Chronos-Bolt, TimesFM, XGBoost, SARIMAX-W, SARIMAX-DHR, dan SNaive-168 signifikan untuk keseluruhan periode ($p < 0{,}01$). Selisihnya terhadap Chronos-2 univariat tidak signifikan untuk keseluruhan periode.
+1. **Karakteristik data.** Beban listrik Panama didominasi musiman harian (kekuatan 0,906; puncak sekitar pukul 13.00 dengan rasio puncak terhadap lembah 1,61) dan musiman mingguan (kekuatan 0,712). Tren tahunannya tumbuh sekitar 2,4% per tahun. Efek hari libur signifikan (−12,8% pada hari kerja; $p < 0{,}001$), dan pembatasan COVID-19 menurunkan beban rata-rata sebesar 14,3%.
+2. **Cuaca tiga kota.** Korelasi suhu dan beban per jam tinggi ($r \approx 0{,}63$ sampai $0{,}65$), tetapi setelah pola harian dikendalikan hanya $r \approx 0{,}11$ sampai $0{,}13$. Suhu Tocumen paling berhubungan dengan beban. Presipitasi berhubungan negatif lemah, sedangkan kelembapan dan angin hampir tidak berhubungan.
+3. **Model terpilih.** Chronos-2 dengan kovariat cuaca dan kalender adalah model paling akurat (MAPE 2,79%; MAE 32,9 MWh), diikuti Chronos-2 tanpa kovariat (2,85%), Chronos-Bolt (3,18%), TimesFM 2.0 (3,22%), dan XGBoost (4,19%).
+4. **Signifikansi.** Keunggulan Chronos-2 dengan kovariat atas Chronos-Bolt, TimesFM, dan XGBoost signifikan untuk keseluruhan periode ($p < 0{,}01$). Manfaat kovariat hanya signifikan pada regime COVID-19 ($p = 0{,}033$).
+5. **Ketangguhan.** *Foundation model* tetap stabil setelah perubahan struktural COVID-19, sedangkan XGBoost memburuk sekitar 23%.
+6. **Sensitivitas suhu.** Kenaikan suhu 1 °C di Tocumen menaikkan ramalan sekitar 12 MWh per jam pada Chronos-2 dengan kovariat dan 4,5 MWh pada XGBoost. Suhu Tocumen paling berpengaruh di antara ketiga kota.
 
-### 7.2 Saran
+### 12.2 Saran
 
-1. **Bagi praktik peramalan**, Chronos-2 (dengan kovariat kalender) dapat dijadikan acuan awal yang wajib dikalahkan sebelum model baru diadopsi. Interval prediksinya perlu dikalibrasi ulang, misalnya dengan *conformal prediction* bergulir.
+1. **Bagi praktik peramalan**, Chronos-2 dengan kovariat kalender dapat dijadikan acuan awal yang harus dikalahkan sebelum model baru diadopsi. Interval prediksinya perlu dikalibrasi ulang.
 2. **Bagi penelitian lanjutan:**
    - (a) Mengulang perbandingan dengan ramalan cuaca, bukan cuaca observasi.
-   - (b) Menerapkan pelatihan ulang bergulir pada XGBoost dan SARIMAX-W agar perbandingannya setara dalam hal pemakaian data terbaru.
-   - (c) Melakukan ablasi per kovariat untuk mengidentifikasi sumber manfaat pada regime COVID-19.
+   - (b) Menerapkan pelatihan ulang bergulir pada XGBoost.
+   - (c) Melakukan ablasi per kovariat (suhu, libur, sekolah) untuk mengidentifikasi sumber manfaat pada regime COVID-19.
    - (d) Melakukan *fine-tuning* Chronos-2 pada data Panama sebelum 2020.
-   - (e) Menjalankan Moirai dan Lag-Llama di lingkungan Python terpisah.
+   - (e) Memperluas simulasi suhu Chronos-2 ke seluruh 178 hari dengan GPU.
    - (f) Memperluas horizon ke 168 jam agar sebanding dengan Aguilar Madrid dan Antonio (2021).
 3. **Bagi kualitas data**, indikator `school` perlu diperbarui agar mencerminkan penutupan sekolah aktual pada 2020.
 
 ## Daftar pustaka
 
-Format mengikuti APA edisi ke-7. Seluruh rujukan telah dicek keberadaannya (judul, penulis, tahun, dan pengenal arXiv/DOI) melalui pencarian pada sesi penyusunan notebook ini.
+Format mengikuti APA edisi ke-7.
 
 - Aguilar Madrid, E., & Antonio, N. (2021). Short-term electricity load forecasting with machine learning. *Information, 12*(2), 50. https://doi.org/10.3390/info12020050
 - Aguilar Madrid, E. `[verifikasi daftar pengunggah]` (2021). *Short-term electricity load forecasting (Panama case study)* [Data set]. Mendeley Data. https://doi.org/10.17632/byx7sztj59.1
 - Ansari, A. F., dkk. (2024). Chronos: Learning the language of time series. *arXiv*. https://arxiv.org/abs/2403.07815
 - Ansari, A. F., dkk. (2025). Chronos-2: From univariate to universal forecasting. *arXiv*. https://arxiv.org/abs/2510.15821
+- Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining* (pp. 785–794). https://doi.org/10.1145/2939672.2939785
 - Das, A., Kong, W., Sen, R., & Zhou, Y. (2024). A decoder-only foundation model for time-series forecasting. *arXiv*. https://arxiv.org/abs/2310.10688
-- Garza, A., Challu, C., & Mergenthaler-Canseco, M. (2023). TimeGPT-1. *arXiv*. https://arxiv.org/abs/2310.03589
-- Rasul, K., dkk. (2023). Lag-Llama: Towards foundation models for probabilistic time series forecasting. *arXiv*. https://arxiv.org/abs/2310.08278
-- Woo, G., dkk. (2024). Unified training of universal time series forecasting transformers. *arXiv*. https://arxiv.org/abs/2402.02592
 
-Catatan verifikasi: untuk rujukan bertanda "dkk.", pencarian hanya mengonfirmasi judul, pengenal arXiv, dan penulis pertama; daftar penulis lengkap perlu disalin dari halaman arXiv sebelum dipakai di naskah resmi. Rujukan untuk Diebold-Mariano (1995), Newey-West (1987), MSTL, dan regresi harmonik dinamis belum dicantumkan `[RUJUKAN DIPERLUKAN: Diebold & Mariano (1995) Journal of Business & Economic Statistics; Newey & West (1987) Econometrica; Hyndman & Athanasopoulos, Forecasting: Principles and Practice]`.
+Catatan verifikasi: untuk rujukan bertanda “dkk.”, daftar penulis lengkap perlu disalin dari halaman arXiv sebelum dipakai di naskah resmi. Rujukan untuk Diebold-Mariano (1995), Newey-West (1987), dan MSTL belum dicantumkan `[RUJUKAN DIPERLUKAN: Diebold & Mariano (1995) Journal of Business & Economic Statistics; Newey & West (1987) Econometrica; Bandara, Hyndman & Bergmeir (2021) tentang MSTL]`.

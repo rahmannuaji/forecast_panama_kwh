@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-23T03:36:55+00:00",
+  "title": "Design System: Atlas Beban Panama",
+  "extensions": {
+    "colorMeta": {
+      "atlas-paper": {
+        "role": "neutral",
+        "displayName": "Atlas Paper",
+        "canonical": "#f7f5ee",
+        "tonalRamp": [
+          "#4a4a47",
+          "#7c7a77",
+          "#adaca7",
+          "#dedcd6",
+          "#f9f7f1",
+          "#fbfaf6",
+          "#fdfcfa",
+          "#fefefd"
+        ]
+      },
+      "panel-paper": {
+        "role": "neutral",
+        "displayName": "Panel Paper",
+        "canonical": "#fbfaf6",
+        "tonalRamp": [
+          "#4b4b4a",
+          "#7e7d7b",
+          "#b0afac",
+          "#e2e1dd",
+          "#fcfbf8",
+          "#fdfcfa",
+          "#fefefc",
+          "#fffefe"
+        ]
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "Wash",
+        "canonical": "#efebe0",
+        "tonalRamp": [
+          "#484743",
+          "#787670",
+          "#a7a49d",
+          "#d7d4ca",
+          "#f2efe6",
+          "#f6f4ee",
+          "#faf9f6",
+          "#fdfdfc"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d9d4c6",
+        "tonalRamp": [
+          "#41403b",
+          "#6c6a63",
+          "#98948b",
+          "#c3bfb2",
+          "#e1ddd1",
+          "#eae7e0",
+          "#f4f2ee",
+          "#fbfbf9"
+        ]
+      },
+      "chart-grid": {
+        "role": "neutral",
+        "displayName": "Chart Grid",
+        "canonical": "#e4dfd1",
+        "tonalRamp": [
+          "#44433f",
+          "#727068",
+          "#a09c92",
+          "#cdc9bc",
+          "#e9e5da",
+          "#f0ede6",
+          "#f7f5f1",
+          "#fcfcfa"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1d1d1b",
+        "tonalRamp": [
+          "#090908",
+          "#0e0e0e",
+          "#141413",
+          "#1a1a18",
+          "#4a4a49",
+          "#838382",
+          "#bbbbbb",
+          "#e8e8e8"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink Two",
+        "canonical": "#45443f",
+        "tonalRamp": [
+          "#151413",
+          "#222220",
+          "#30302c",
+          "#3e3d39",
+          "#6a6965",
+          "#999895",
+          "#c7c7c5",
+          "#ececec"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#5b5a55",
+        "tonalRamp": [
+          "#1b1b1a",
+          "#2e2d2a",
+          "#403f3b",
+          "#52514c",
+          "#7c7b77",
+          "#a5a4a2",
+          "#cececc",
+          "#efeeee"
+        ]
+      },
+      "temperature-red": {
+        "role": "primary",
+        "displayName": "Temperature Red",
+        "canonical": "#c8372d",
+        "tonalRamp": [
+          "#3c110e",
+          "#641c16",
+          "#8c261f",
+          "#b43228",
+          "#d35f57",
+          "#e1918c",
+          "#eec3c0",
+          "#faebea"
+        ]
+      },
+      "precipitation-blue": {
+        "role": "secondary",
+        "displayName": "Precipitation Blue",
+        "canonical": "#2b6cb0",
+        "tonalRamp": [
+          "#0d2035",
+          "#163658",
+          "#1e4c7b",
+          "#27619e",
+          "#5589c0",
+          "#8aaed4",
+          "#bfd3e7",
+          "#eaf0f7"
+        ]
+      },
+      "model-plum": {
+        "role": "tertiary",
+        "displayName": "Plum (Chronos-2)",
+        "canonical": "#a3366f",
+        "tonalRamp": [
+          "#311021",
+          "#521b38",
+          "#72264e",
+          "#933164",
+          "#b55e8c",
+          "#cc90b0",
+          "#e3c3d4",
+          "#f6ebf1"
+        ]
+      },
+      "model-ochre": {
+        "role": "tertiary",
+        "displayName": "Ochre (Chronos-Bolt)",
+        "canonical": "#a8690c",
+        "tonalRamp": [
+          "#322004",
+          "#543406",
+          "#764a08",
+          "#975e0b",
+          "#b9873d",
+          "#cfac79",
+          "#e5d2b6",
+          "#f6f0e7"
+        ]
+      },
+      "model-lowland-green": {
+        "role": "tertiary",
+        "displayName": "Lowland Green (TimesFM 2.0)",
+        "canonical": "#3d8a4a",
+        "tonalRamp": [
+          "#122916",
+          "#1e4525",
+          "#2b6134",
+          "#377c43",
+          "#64a16e",
+          "#94bf9b",
+          "#c5dcc9",
+          "#ecf3ed"
+        ]
+      },
+      "model-indigo": {
+        "role": "tertiary",
+        "displayName": "Indigo (XGBoost)",
+        "canonical": "#5a4aa8",
+        "tonalRamp": [
+          "#1b1632",
+          "#2d2554",
+          "#3f3476",
+          "#514397",
+          "#7b6eb9",
+          "#a49bcf",
+          "#cec9e5",
+          "#eeedf6"
+        ]
+      },
+      "city-tocumen-gray": {
+        "role": "neutral",
+        "displayName": "Tocumen Gray",
+        "canonical": "#5e5b53",
+        "tonalRamp": [
+          "#1c1b19",
+          "#2f2e2a",
+          "#42403a",
+          "#55524b",
+          "#7e7c75",
+          "#a6a5a0",
+          "#cfcecb",
+          "#efefee"
+        ]
+      },
+      "city-santiago-gray": {
+        "role": "neutral",
+        "displayName": "Santiago Gray",
+        "canonical": "#7d796d",
+        "tonalRamp": [
+          "#262421",
+          "#3e3c36",
+          "#58554c",
+          "#706d62",
+          "#97948a",
+          "#b8b5af",
+          "#d8d7d3",
+          "#f2f2f0"
+        ]
+      },
+      "city-david-gray": {
+        "role": "neutral",
+        "displayName": "David Gray",
+        "canonical": "#959184",
+        "tonalRamp": [
+          "#2d2c28",
+          "#4a4842",
+          "#68665c",
+          "#868277",
+          "#aaa79d",
+          "#c5c2bb",
+          "#dfdeda",
+          "#f4f4f3"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page-level question atop each tab."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Headline findings in the facts column."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section heads within a tab."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Explanation, max 72ch."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "Intro paragraph under the display question, in Ink-2."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Control labels."
+      },
+      "chart": {
+        "displayName": "Chart",
+        "purpose": "Chart ticks and legends (Chart.js default)."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tab-underline",
+        "value": "inset 0 -3px 0 #c8372d",
+        "purpose": "Active-tab underline drawn as an inset rule; not elevation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "All UI transitions."
+      },
+      {
+        "name": "tab-rise",
+        "value": "rise .55s (opacity 0 to 1, translateY 10px to 0)",
+        "purpose": "Tab section entrance."
+      },
+      {
+        "name": "state",
+        "value": ".2s to .3s",
+        "purpose": "Hover fills, tab underline, panel lift."
+      },
+      {
+        "name": "chart",
+        "value": "450ms",
+        "purpose": "Chart.js animation; 0 under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "chart-end-labels",
+        "value": "640px"
+      },
+      {
+        "name": "single-column",
+        "value": "820px"
+      },
+      {
+        "name": "facts-strip",
+        "value": "1100px"
+      },
+      {
+        "name": "container",
+        "value": "1440px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "The only button: square, 1px ink frame, Wash on hover.",
+      "html": "<button class=\"ds-btn\">Unduh CSV</button>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-btn{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--rule);background:transparent;color:var(--ink);padding:8px 14px;min-height:40px;cursor:pointer;border-radius:0;transition:background .2s var(--ease)} .ds-btn:hover{background:var(--wash)} .ds-btn:active{transform:translateY(1px)} .ds-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented-button",
+      "description": "Mutually exclusive switches in one ink frame; pressed inverts to ink.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"true\">Semua</button><button aria-pressed=\"false\">Normal</button><button aria-pressed=\"false\">COVID-19</button></div>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-seg{display:inline-flex;border:1px solid var(--rule)} .ds-seg button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--ink);padding:8px 14px;min-height:40px;cursor:pointer;border-right:1px solid var(--rule);transition:background .2s var(--ease),color .2s} .ds-seg button:last-child{border-right:0} .ds-seg button:hover{background:var(--wash)} .ds-seg button[aria-pressed=\"true\"]{background:var(--ink);color:var(--paper)} .ds-seg button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}"
+    },
+    {
+      "name": "Select",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "Native select under a 600 13px label, square ink frame, inline ink chevron.",
+      "html": "<label class=\"ds-ctl\"><span>Kota</span><select class=\"ds-select\"><option>Tocumen</option><option>Santiago</option><option>David</option></select></label>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-ctl{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--ink-2)} .ds-select{font:inherit;font-size:14px;font-weight:400;color:var(--ink);background-color:var(--panel);border:1px solid var(--rule);border-radius:0;padding:8px 34px 8px 10px;min-height:40px;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpolyline points='1,1 6,6 11,1' fill='none' stroke='%231d1d1b' stroke-width='1.6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center} .ds-select:hover{background-color:#fff} .ds-select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}"
+    },
+    {
+      "name": "Top Bar Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Sticky paper bar, ink bottom rule, active tab gets a 3px red underline.",
+      "html": "<nav class=\"ds-top\"><a class=\"ds-brand\" href=\"#\">Atlas Beban Panama<span>peramalan 24 jam</span></a><div class=\"ds-tabs\"><a href=\"#\" aria-current=\"page\">Beranda</a><a href=\"#\">Eksplorasi</a><a href=\"#\">Cuaca</a><a href=\"#\">Performa</a><a href=\"#\">Prediksi</a></div></nav>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-top{display:flex;align-items:center;gap:40px;min-height:68px;padding:0 24px;background:var(--paper);border-bottom:1px solid var(--rule)} .ds-brand{font-weight:800;font-size:19px;letter-spacing:-.01em;text-decoration:none;color:var(--ink);white-space:nowrap} .ds-brand span{font-weight:500;color:var(--muted);font-size:14px;margin-left:8px} .ds-tabs{display:flex;gap:28px} .ds-tabs a{display:block;padding:22px 0 20px;font-size:15px;text-decoration:none;color:var(--ink-2);box-shadow:inset 0 0 0 var(--temp);transition:box-shadow .3s var(--ease),color .2s} .ds-tabs a:hover{color:var(--ink)} .ds-tabs a[aria-current=\"page\"]{color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--temp)} .ds-tabs a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The universal container: 1px ink frame, square, panel paper, title plus muted sub.",
+      "html": "<div class=\"ds-panel\" tabindex=\"0\"><h3>MAE menurut horizon</h3><p class=\"ds-sub\">Rata-rata 178 hari uji</p><div class=\"ds-plot\"></div></div>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-panel{border:1px solid var(--rule);background:var(--panel);padding:20px 22px;transition:background .25s var(--ease)} .ds-panel:hover{background:#fff} .ds-panel:focus-visible{outline:2px solid var(--focus);outline-offset:2px} .ds-panel h3{font-size:18px;font-weight:700;letter-spacing:-.01em;line-height:1.1;margin:0} .ds-sub{font-size:14px;color:var(--muted);margin:3px 0 12px} .ds-plot{height:120px;background:repeating-linear-gradient(0deg,#e4dfd1 0 1px,transparent 1px 30px)}"
+    },
+    {
+      "name": "Findings Column",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Heavy 44px figures under a 3px ink top rule, hairline-divided.",
+      "html": "<div class=\"ds-facts\"><div class=\"ds-fact\"><b>2,87%</b><span>galat rata-rata model terbaik</span></div><div class=\"ds-fact\"><b>−9,4%</b><span>beban saat hari libur nasional</span></div></div>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-facts{display:grid;border-top:3px solid var(--ink);max-width:300px} .ds-fact{padding:14px 0 16px;border-bottom:1px solid var(--hair)} .ds-fact b{display:block;font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em} .ds-fact span{display:block;font-size:14px;color:var(--ink-2);margin-top:6px}"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Right-aligned tabular numbers, hairline rows, ink header rule, bold highlight row, square swatches.",
+      "html": "<table class=\"ds-tbl\"><thead><tr><th>Model</th><th>MAPE (%)</th><th>MAE (MWh)</th></tr></thead><tbody><tr class=\"hl\"><td><span class=\"sw\" style=\"background:#a3366f\"></span>Chronos-2 + kovariat</td><td>2,87</td><td>34,1</td></tr><tr><td><span class=\"sw\" style=\"background:#5a4aa8\"></span>XGBoost</td><td>3,40</td><td>40,2</td></tr></tbody></table>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-tbl{width:100%;border-collapse:collapse;font-size:14px} .ds-tbl th,.ds-tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--hair);white-space:nowrap} .ds-tbl th:first-child,.ds-tbl td:first-child{text-align:left} .ds-tbl thead th{font-weight:700;border-bottom:1px solid var(--rule)} .ds-tbl tr.hl td{font-weight:700} .ds-tbl .sw{display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-1px}"
+    },
+    {
+      "name": "Climatograph",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Signature: temperature line above precipitation bars on one month axis, scales shared across cities. Illustrative values.",
+      "html": "<div class=\"ds-clim\"><div class=\"ds-k\"><h3>Tocumen</h3><small>Kota Panama</small></div><svg viewBox=\"0 0 240 150\" width=\"100%\" role=\"img\" aria-label=\"Klimatograf Tocumen\"><g stroke=\"#e4dfd1\"><line x1=\"20\" x2=\"236\" y1=\"20\" y2=\"20\"/><line x1=\"20\" x2=\"236\" y1=\"55\" y2=\"55\"/><line x1=\"20\" x2=\"236\" y1=\"90\" y2=\"90\"/></g><polyline fill=\"none\" stroke=\"#c8372d\" stroke-width=\"2\" points=\"29,60 47,55 65,48 83,40 101,46 119,52 137,52 155,54 173,56 191,58 209,60 227,62\"/><g fill=\"rgba(43,108,176,.55)\"><rect x=\"23\" y=\"140\" width=\"12\" height=\"4\"/><rect x=\"41\" y=\"141\" width=\"12\" height=\"3\"/><rect x=\"59\" y=\"141\" width=\"12\" height=\"3\"/><rect x=\"77\" y=\"136\" width=\"12\" height=\"8\"/><rect x=\"95\" y=\"118\" width=\"12\" height=\"26\"/><rect x=\"113\" y=\"116\" width=\"12\" height=\"28\"/><rect x=\"131\" y=\"120\" width=\"12\" height=\"24\"/><rect x=\"149\" y=\"118\" width=\"12\" height=\"26\"/><rect x=\"167\" y=\"114\" width=\"12\" height=\"30\"/><rect x=\"185\" y=\"108\" width=\"12\" height=\"36\"/><rect x=\"203\" y=\"112\" width=\"12\" height=\"32\"/><rect x=\"221\" y=\"128\" width=\"12\" height=\"16\"/></g><line x1=\"20\" x2=\"236\" y1=\"144\" y2=\"144\" stroke=\"#1d1d1b\"/></svg></div>",
+      "css": ":host{--paper:#f7f5ee;--panel:#fbfaf6;--ink:#1d1d1b;--ink-2:#45443f;--muted:#5b5a55;--rule:#1d1d1b;--hair:#d9d4c6;--wash:#efebe0;--temp:#c8372d;--rain:#2b6cb0;--focus:#c8372d;--ease:cubic-bezier(.16,1,.3,1);font-family:'Libre Franklin',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)} .ds-clim{border:1px solid var(--rule);background:var(--panel);padding:20px 22px;max-width:300px} .ds-k{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .ds-k h3{font-size:18px;font-weight:700;margin:0} .ds-k small{font-size:13px;color:var(--muted)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Climate Atlas",
+    "overview": "The system reads like a printed physical atlas: warm uncoated paper, black ink rules, and a small set of map inks whose meaning never changes from page to page. Weather is drawn the way an atlas draws climate, as Walter-Lieth style climatographs, and the national load curve sits beside it in pure ink. It is dense, quiet, and meant to be projected in a classroom: large heavy figures, plain body text, and every number set in tabular figures so columns line up.\n\nHierarchy comes from weight and rules, not from shadows or fills. Panels are 1px ink frames with square corners on a barely-lighter paper; sections are separated by whitespace and a 3px ink top rule where a column of findings begins. Colour is semantic first and decorative never: red is temperature, blue is precipitation, four hypsometric inks are the four models, and cities are a family of ink-grays told apart by dash and marker shape.\n\nThe world explicitly rejects the default KPI-card admin dashboard: no sidebar, no identical rounded tiles, no soft gray card borders.",
+    "keyCharacteristics": [
+      "Atlas paper ground with 1px ink frames and square corners.",
+      "Semantic colour: one meaning per hue across every tab.",
+      "Every series carries a second encoding (dash pattern or marker shape) besides colour.",
+      "Libre Franklin at heavy display weights (700–800) over a 400 body; tabular figures everywhere.",
+      "Flat: depth by ink rules and paper tone, never shadow."
+    ],
+    "rules": [
+      {
+        "name": "The One Meaning Rule",
+        "body": "A hue means one thing on every tab. Red is temperature (and the single UI accent), blue is precipitation, the four inks are the four models. No hue may mean a model on one tab and a city on another.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pure Ink Load Rule",
+        "body": "National load is always drawn in pure ink (#1d1d1b); its smoothing companions are paper-to-ink tints, never a colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Second Encoding Rule",
+        "body": "Every coloured series also carries a dash pattern or marker shape, because the model inks sit in the CVD floor band and are only legal with it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper-to-Ink Scale Rule",
+        "body": "Sequential scales (heatmaps, year-over-year lines) ramp from paper (#efe9dc / #c9c3b3) to ink. Correlation is ink-only magnitude with a printed minus sign (−), never a red–blue diverging scale, since red and blue are already taken.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "`font-variant-numeric: tabular-nums` is set on the body; every number, in tables, charts, and readouts, aligns by column. Numbers use Indonesian locale formatting (decimal comma) and a true minus sign (−).",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Not Size Rule",
+        "body": "Hierarchy steps by weight (400 → 600 → 700 → 800) before size; there are no uppercase tracked labels above headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ink Rule Rule",
+        "body": "Separation is drawn with ink lines (1px frame, 3px section rule) or hairlines; never with soft gray card borders or drop shadows.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do frame panels and controls with a 1px ink (#1d1d1b) rule and square corners.",
+      "Do keep red for temperature and blue for precipitation on every surface, including Streamlit.",
+      "Do give every model and city series its dash pattern (and, for cities, marker shape) alongside its ink.",
+      "Do draw national load in pure ink and sequential scales from paper to ink.",
+      "Do stack temperature over precipitation on a shared month axis, with one scale shared across all three cities.",
+      "Do set every number in tabular figures with Indonesian formatting and a true minus sign."
+    ],
+    "donts": [
+      "Don't overlay two y-scales on the same plot area; stack panels instead.",
+      "Don't use a red–blue diverging scale for correlation or any other quantity.",
+      "Don't reuse a model ink for a city or a city gray for a model.",
+      "Don't build the default KPI-card admin dashboard: no sidebar, no identical rounded tiles, no soft gray card borders.",
+      "Don't add drop shadows to panels, buttons, or tooltips."
+    ]
+  }
+}
